@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>gforgame 逻辑服（cmd/game）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* 亮色：冷蓝图 + 墨青 */
+  --paper:#E9EDF2;
+  --card:#FBFCFE;
+  --ink:#1A2F38;
+  --ink-2:#435962;
+  --muted:#6B7E88;
+  --hair:#D9E2E8;
+  --hair-strong:#C3D0D7;
+  --amber:#b8660b;
+  --amber-in:#8a4c04;
+  --sky:#1f6f93;
+  --sky-in:#17566f;
+
+  --sans:"IBM Plex Sans",-apple-system,"PingFang SC","Microsoft YaHei",system-ui,Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,"Courier New",monospace;
+  --rail:252px;
+  --measure:720px;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --paper:#10171c;--card:#1a232b;--ink:#e6edf1;--ink-2:#c4d1d8;
+    --muted:#8799a3;--hair:#2b3943;--hair-strong:#3e505c;
+    --amber:#e3a451;--amber-in:#f0c386;--sky:#5bb0d0;--sky-in:#8fd4ec;
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+body{
+  margin:0;color:var(--ink);background:var(--paper);
+  font-family:var(--sans);font-size:16px;line-height:1.72;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+}
+::selection{background:rgba(184,102,11,.18)}
+
+/* ---------- 框架 ---------- */
+.wrap{max-width:1280px;margin:0 auto;padding:0 26px}
+.grid{display:grid;grid-template-columns:var(--rail) 1fr;column-gap:64px;padding-top:6px}
+main{max-width:var(--measure);min-width:0;padding-bottom:120px}
+
+/* 顶栏 */
+.topbar{position:sticky;top:0;z-index:20;
+  background:color-mix(in srgb,var(--card) 85%,transparent);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--hair)}
+.topinner{max-width:1280px;margin:0 auto;padding:13px 26px;
+  display:flex;align-items:baseline;justify-content:space-between;gap:16px}
+.brand{font-family:var(--mono);font-size:.78rem;letter-spacing:.08em;color:var(--muted)}
+.brand b{font-weight:600;color:var(--ink)}
+.pagetitle{font-weight:600;font-size:.96rem}
+.pagetitle small{display:block;font-weight:400;color:var(--muted);
+  font-size:.7rem;letter-spacing:.08em;font-family:var(--mono)}
+
+/* ---------- 侧栏 ---------- */
+aside{position:sticky;top:98px;align-self:start;height:max-content;
+  max-height:calc(100vh - 150px);overflow:auto;padding-right:8px}
+aside .cap{font-family:var(--mono);font-size:.72rem;letter-spacing:.1em;
+  color:var(--muted);margin:0 0 8px 4px}
+.toc{list-style:none;margin:0;padding:0;border-left:1px solid var(--hair)}
+.toc a{display:block;padding:6px 0 6px 16px;margin-left:-1px;
+  border-left:2px solid transparent;color:var(--muted);text-decoration:none;
+  font-size:.89rem;line-height:1.35}
+.toc a:hover{color:var(--ink)}
+.toc a.active{border-left-color:var(--amber);color:var(--ink)}
+.toc .sub a{padding-left:32px;font-size:.83rem}
+@media (max-width:1020px){ .grid{grid-template-columns:1fr} aside{display:none} }
+@media (max-width:520px){ .pagetitle small{display:none} }
+
+/* ---------- Hero ---------- */
+.hero{padding-top:58px}
+.hero h1{font-size:clamp(2.1rem,5.2vw,3.1rem);font-weight:300;
+  letter-spacing:-.02em;line-height:1.1;margin:0 0 18px}
+.hero h1 b{font-weight:500}
+.lede{font-size:1.06rem;color:var(--ink-2);max-width:60ch;margin:0 0 36px}
+
+/* 传输图 */
+.heroflow{margin:0 0 10px;padding:26px 26px 18px;
+  border:1px solid var(--hair);border-radius:16px;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--card) 88%,var(--sky) 6%),var(--card) 55%)}
+.nodes{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.term{flex:0 0 auto;min-width:96px;display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 6px}
+.term .k{font-weight:600;font-size:.98rem}
+.term .m{font-family:var(--mono);font-size:.7rem;color:var(--muted)}
+.term.main{border:1px solid var(--hair-strong);border-radius:12px;background:var(--card);
+  box-shadow:0 14px 40px -22px rgba(10,30,40,.5);padding:14px 18px}
+.term.main .k{color:var(--amber-in)}
+.bay{flex:1 1 auto;min-width:52px;padding:0 4px}
+.bay .link{display:flex;align-items:center;gap:7px;margin:3px 0}
+.bay .link b{font-family:var(--mono);font-size:.66rem;font-weight:500;color:var(--amber-in);letter-spacing:.04em}
+.bay .link svg{flex:1;height:22px;color:var(--amber);overflow:visible}
+.bay .link svg line{stroke:currentColor;stroke-width:1.6}
+.bay .link svg path{fill:currentColor;stroke:none}
+.bay .link.down svg{color:var(--sky)}
+.bay .link.down b{color:var(--sky-in)}
+.hero figcaption{margin-top:16px;padding-top:12px;border-top:1px dashed var(--hair-strong);
+  font-size:.78rem;color:var(--muted)}
+.hero figcaption .dot{display:inline-block;width:8px;height:8px;border-radius:50%;
+  margin:0 6px 0 10px;vertical-align:-1px}
+.hero figcaption .dot.up{background:var(--amber)}
+.hero figcaption .dot.down{background:var(--sky)}
+.hero figcaption .dot:first-child{margin-left:0}
+
+/* 内部管线小卡（game 专属） */
+.pipe{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px;margin-top:14px;
+  padding-top:14px;border-top:1px dashed var(--hair-strong)}
+.pipe div{flex:1 1 auto;min-width:88px;padding:7px 10px;text-align:center;
+  border:1px solid var(--hair);border-radius:9px;background:color-mix(in srgb,var(--card) 60%,transparent);
+  font-size:.72rem;font-family:var(--mono);color:var(--ink-2)}
+.pipe b{display:block;font-size:.8rem;font-family:var(--sans);color:var(--ink);margin-bottom:1px}
+
+/* ---------- 正文 ---------- */
+.section{margin-top:92px;scroll-margin-top:118px}
+.section:first-of-type{margin-top:0}
+.hd{display:flex;align-items:center;gap:15px;margin-bottom:10px}
+.hd .num{font-family:var(--mono);font-weight:500;font-size:.78rem;line-height:1.5;white-space:nowrap;
+  color:var(--amber);border:1px solid currentColor;border-radius:999px;padding:1px 10px 0}
+.section h2{margin:0;font-size:1.5rem;font-weight:600;letter-spacing:-.01em}
+.section h3{margin:2.3rem 0 .7rem;font-size:1.1rem;font-weight:600;letter-spacing:-.005em}
+.section h3 .kicker{font-family:var(--mono);color:var(--muted);font-size:.76rem;font-weight:400}
+p{margin:.85rem 0}
+a{color:var(--sky-in);text-decoration:none}
+a:hover{text-decoration:underline}
+strong{font-weight:600}
+
+code,kbd{font-family:var(--mono)}
+:not(pre)>code{font-size:.85em;
+  background:color-mix(in srgb,var(--hair-strong) 24%,transparent);
+  border-radius:5px;padding:.12em .42em}
+pre{background:#18262e;color:#d9e6ec;border:1px solid var(--hair);
+  border-radius:12px;padding:18px 20px;overflow-x:auto;
+  font-family:var(--mono);font-size:.78rem;line-height:1.66;
+  box-shadow:inset 0 -36px 60px -54px rgba(0,0,0,.6)}
+pre .cm{opacity:.52}
+pre code{background:none;padding:0;font-size:inherit;color:inherit}
+
+ul,ol{margin:.6rem 0 .6rem 1.2rem;padding:0}
+li{margin:.32rem 0}
+.steps{list-style:none;margin:1rem 0 .2rem;padding:0}
+.steps li{display:grid;grid-template-columns:44px 1fr;gap:14px;padding:12px 0;
+  border-bottom:1px solid var(--hair);align-items:baseline}
+.steps li:last-child{border-bottom:none}
+.steps .n{font-family:var(--mono);font-size:.8rem;font-variant-numeric:tabular-nums;
+  color:var(--amber);padding-top:2px}
+.steps .n:after{content:"\2192";color:var(--muted);margin-left:6px;font-size:.72rem}
+.steps ul{list-style:disc;margin:.35rem 0 .15rem 1.1rem}
+.steps ul li{margin:.15rem 0}
+
+table{width:100%;border-collapse:collapse;margin:1.1rem 0;font-size:.93rem}
+th,td{text-align:left;padding:11px 13px;border-bottom:1px solid var(--hair);vertical-align:top}
+th{font-weight:600;color:var(--ink-2);font-family:var(--mono);font-size:.78rem;letter-spacing:.02em}
+td code{white-space:nowrap}
+tr:last-child td{border-bottom:none}
+
+blockquote{margin:1.2rem 0;padding:3px 0 3px 20px;border-left:3px solid var(--amber);
+  color:var(--ink-2);font-size:.95rem}
+blockquote p{margin:.4rem 0}
+
+.rule{height:1px;border:none;background:linear-gradient(90deg,var(--hair) 0%,transparent 100%);margin:100px 0 30px}
+.foot{color:var(--muted);font-size:.85rem}
+</style>
+</head>
+<body>
+
+<!-- 顶栏 -->
+<div class="topbar">
+  <div class="topinner">
+    <div class="brand">gforgame<b>/</b>game</div>
+    <div class="pagetitle">cmd/game 逻辑服说明<small>LOGIC · ACTOR · PERSIST</small></div>
+  </div>
+</div>
+
+<div class="wrap">
+<div class="grid">
+
+<!-- 侧栏 -->
+<aside id="rail">
+  <p class="cap">目录</p>
+  <nav class="toc" aria-label="章节">
+    <a href="#s1">1 · 角色与定位</a>
+    <a href="#s2">2 · 启动与运行</a>
+    <a href="#s21" class="sub">2.1 · 启动流程与数据恢复</a>
+    <a href="#s3">3 · 网络接入：解包 / 心跳 / 断线</a>
+    <a href="#s4">4 · 路由分发与消息处理</a>
+    <a href="#s5">5 · 登录认证</a>
+    <a href="#s6">6 · 缓存与 MySQL 持久化</a>
+    <a href="#s7">7 · 定时任务与 Actor</a>
+    <a href="#s8">8 · 优雅停服完整时序</a>
+    <a href="#s9">9 · 其余入口</a>
+    <a href="#s10">附 · 关键代码文件</a>
+  </nav>
+</aside>
+
+<main>
+
+<!-- Hero -->
+<header class="hero">
+  <h1>把一场在线<br>做成<b>一颗不丢账的心</b></h1>
+  <p class="lede"><code>cmd/game</code> 是 gforgame 的逻辑服务器——承载全部业务与玩家数据：先入内存缓存、再异步落库，靠 Actor 串行化每个玩家，优雅关服时冲刷到底。</p>
+</header>
+
+<!-- 传输图：客户端 ↔ 逻辑服 + 内部管线 -->
+<figure class="hero">
+  <div class="heroflow">
+    <div class="nodes">
+
+      <div class="term">
+        <span class="k">客户端</span>
+        <span class="m">client</span>
+      </div>
+
+      <div class="bay">
+        <div class="link"><b>下行</b>
+          <svg viewBox="0 0 90 22" aria-hidden="true"><line x1="86" y1="11" x2="18" y2="11"/><path d="M23 5l-9 6 9 6z"/></svg>
+        </div>
+        <div class="link down"><b>持久化</b>
+          <svg viewBox="0 0 90 22" aria-hidden="true"><line x1="86" y1="11" x2="18" y2="11"/><path d="M23 5l-9 6 9 6z"/></svg>
+        </div>
+      </div>
+
+      <div class="term main">
+        <span class="k">逻辑服</span>
+        <span class="m">cmd/game</span>
+      </div>
+
+      <div class="bay">
+        <div class="link"><b>读回源</b>
+          <svg viewBox="0 0 90 22" aria-hidden="true"><line x1="86" y1="11" x2="18" y2="11"/><path d="M23 5l-9 6 9 6z"/></svg>
+        </div>
+        <div class="link down"><b>异步落库</b>
+          <svg viewBox="0 0 90 22" aria-hidden="true"><line x1="4" y1="11" x2="72" y2="11"/><path d="M67 5l9 6-9 6z"/></svg>
+        </div>
+      </div>
+
+      <div class="term">
+        <span class="k">MySQL</span>
+        <span class="m">gorm + 快照容器</span>
+      </div>
+
+    </div>
+    <figcaption>
+      <span class="dot up"></span>下行 · 结果/推送回客户端
+      <span class="dot down"></span>持久化 · 读回源 与 异步落库
+    </figcaption>
+
+    <!-- 内部管线卡：核心记忆点 -->
+    <div class="pipe">
+      <div><b>WS 接入</b>解包 · 12B 头</div>
+      <div><b>Session</b>读/写 双协程 · 心跳</div>
+      <div><b>IoDispatch</b>GateTransform · TaskHandler</div>
+      <div><b>Actor</b>玩家串行 · 共享匿名</div>
+      <div><b>Service</b>业务 + 事件总线</div>
+      <div><b>Cache</b>进程内 · 资料索引</div>
+      <div><b>AsyncDB</b>延时合并 · 优雅冲刷</div>
+    </div>
+  </div>
+</figure>
+
+<hr class="rule">
+
+<!-- 1 角色与定位 -->
+<section class="section" id="s1">
+  <div class="hd"><span class="num">01</span><h2>角色与定位</h2></div>
+  <p><strong>进程</strong>：<code>cmd/game</code>，独立可执行程序，是<b>业务主入口</b>，承载全部业务逻辑、玩家数据、排行榜、公会、背包、邮件等模块。</p>
+  <ul>
+    <li><strong>对外（直连模式）</strong>：WebSocket 服务，监听地址为 <code>ServerUrl</code>（见「配置」）。</li>
+    <li><strong>对外（网关模式）</strong>：作为逻辑服节点，与 <code>cmd/gate</code> 各维持一条长连接，<em>不直接对客户端</em>；由 <code>useGateMode</code> 决定。</li>
+    <li><strong>对内</strong>：MySQL 持久化 + 进程内缓存 + Actor 并发模型。</li>
+    <li>所有业务逻辑、数据读写在逻辑服完成；网关只做转发。</li>
+  </ul>
+</section>
+
+<!-- 2 启动与运行 -->
+<section class="section" id="s2">
+  <div class="hd"><span class="num">02</span><h2>启动与运行</h2></div>
+<pre><code><span class="cm"># 编译（部署）</span>
+make game            <span class="cm"># 本机编译 → bin/game</span>
+make build-linux     <span class="cm"># 交叉编译 linux/amd64</span>
+
+<span class="cm"># 运行</span>
+go run ./cmd/game    <span class="cm"># 源码直接跑（需先配好 config-game.yml 的 MySQL）</span></code></pre>
+
+  <p><strong>配置</strong>：<code>config/config-game.yml</code>（逻辑服配置）+ 全局 <code>config/default.yml</code>（<code>servers</code> 节点表），经 <code>ServerConfig</code> 读取。</p>
+  <p><strong>关键配置</strong>：<code>db.url</code>（MySQL DSN）、<code>server.url</code>（WS 监听地址）、<code>server.useGateMode</code>（是否网关模式）、<code>http.url</code>（管理 HTTP）、<code>pprof.addr</code>（性能监控）。</p>
+
+  <h3 id="s21"><span class="kicker">2.1 ·</span> 启动流程与数据恢复 <span class="kicker">main.go</span></h3>
+  <p>启动顺序即「数据恢复」的顺序：<strong>加载配置 → 建库表 → 载入业务配置 → 预热玩家资料索引 → 启动定时任务 → 启动网络</strong>。</p>
+  <ol class="steps">
+    <li><span class="n">1</span><span class="d"><strong>读配置</strong>：<code>config.Load()</code> 载入 <code>config-game.yml</code> 与 <code>default.yml</code>。</span></li>
+    <li><span class="n">2</span><span class="d"><strong>初始化 DB</strong>：<code>persistence.InitMysql()</code> 用 GORM + DSN 打开全局单例 <code>persistence.Db</code>（慢查询阈值 1s）。</span></li>
+    <li><span class="n">3</span><span class="d"><strong>建表 DDL</strong>：<code>bootstrap.InitMysqlDdl()</code> 对 <code>PlayerPO / FriendPO / SystemParameterEnt</code> 依次 <code>AutoMigrate</code>。</span></li>
+    <li><span class="n">4</span><span class="d"><strong>载入业务配置</strong>：<code>config.InitConfig()</code> 加载 Excel 静态数据（item / hero / mail 等）。</span></li>
+    <li><span class="n">5</span><span class="d"><strong>装配服务</strong>：<code>bootstrap.InitServices()</code> 用 <code>dig</code> 装配全部 Service / Repository / 基础服务，并对实现 <code>ServiceModule.Init()</code> 的模块统一初始化。</span></li>
+    <li><span class="n">6</span><span class="d"><strong>预热 + 任务恢复</strong>：
+      <ul>
+        <li><code>InitBusiness()</code> → <code>PlayerProfile.LoadPlayerProfiles()</code> 从 DB <code>SELECT id,name,...</code> 重建 <code>id→profile</code> 与 <code>id↔name</code> 内存索引（启动即恢复，不逐账号拉全量），并 <code>ScheduleAllActivity()</code>。</li>
+        <li><code>StartSchedulers()</code> → <code>System.StartSystemTask()</code> 启动每日/每周/每月重置、开服等 cron 任务。</li>
+      </ul></span></li>
+    <li><span class="n">7</span><span class="d"><strong>注册路由</strong>：<code>NewMessageRoute()</code> + 各 route 模块 <code>RegisterMessageHandlers</code>。</span></li>
+    <li><span class="n">8</span><span class="d"><strong>构建派发链</strong>：<code>NewGameTaskHandler(router, actorSystem)</code> + 共享匿名 Actor；网关模式再插 <code>NewGateTransformHandler()</code>。</span></li>
+    <li><span class="n">9</span><span class="d"><strong>启动 WS</strong>：<code>ws.NewServer(...).Start()</code>，随后启后台管理 HTTP 与 pprof。</span></li>
+    <li><span class="n">10</span><span class="d"><strong>阻塞等待退出</strong>：捕获 <code>os.Interrupt</code> / <code>SIGTERM</code>，或 <code>node.RunningChan()</code>（<code>/api/stop</code>）。</span></li>
+    <li><span class="n">11</span><span class="d"><strong>优雅停服</strong>：<code>node.Stop()</code> 停监听与连接 → <code>s.DbService.Shutdown()</code> 冲刷所有未落库缓存（见 §8）。</span></li>
+  </ol>
+<pre><code>启动/数据恢复             停服冲刷
+ InitMysql ───► AutoMigrate ───► InitConfig ───► InitServices(dig)
+    ───► InitBusiness(索引恢复) ───► StartSchedulers(定时任务)
+    ───► 注册路由 ───► ws.Start ───► 阻塞等待信号
+ SIGTERM / /api/stop ──► node.Stop() ──► DbService.Shutdown()</code></pre>
+</section>
+
+<!-- 3 网络接入 -->
+<section class="section" id="s3">
+  <div class="hd"><span class="num">03</span><h2>网络接入：解包 / 心跳 / 断线</h2></div>
+
+  <h3>3.1 · WebSocket 服务 <span class="kicker">ws/server.go</span></h3>
+  <p><code>ws.NewServer</code> 在 <code>server.url</code> 上用 <code>net/http</code> + <code>gorilla/websocket</code> 升级连接，每个连接 <code>newWSConn</code> 后 <code>go dispatch.CreateServeSession(...)</code>。</p>
+
+  <h4>CreateServeSession 流程</h4>
+  <ol class="steps">
+    <li><span class="n">1</span><span class="d">创建 <code>BaseSession</code>（<code>session.NewSessionWithProtocol</code>）：双通道 <code>dataToSend</code>/<code>DataReceived</code>，私有协议栈 <code>BinaryProtocolAdapter</code>，默认 <code>PayloadModeDecode</code>。</span></li>
+    <li><span class="n">2</span><span class="d"><strong>触发 <code>OnSessionCreated</code></strong> → <code>go session.Read()</code> + <code>go session.Write()</code> 双协程。</span></li>
+    <li><span class="n">3</span><span class="d">阻塞在 <code>eventLoop</code>，会话结束才 <code>OnSessionClosed</code> 并 <code>conn.Close()</code>。</span></li>
+  </ol>
+
+  <h3>3.2 · 读循环 / 解包 <span class="kicker">session/io.go · protocol/protocol.go</span></h3>
+  <ul>
+    <li>WebSocket 走 <code>readWebSocketStream</code>：阻塞读一整帧，首帧决定协议类型（文本→JSON，默认二进制），<code>MarkReadActivity()</code> 维护最后活跃时间。</li>
+    <li>二进制解包（<code>Protocol.Decode</code>）：固定 <strong>12 字节头 <code>[Size|Index|Cmd]</code></strong> + 消息体；逐帧校验 <code>Size ≤ 64KB</code>、取足 body，产出多个 <code>Packet</code>，按 <code>Cmd</code> 反射出 <code>*protos.ReqXxx</code>，用 <code>MessageCodec.Decode</code> 解码成 <code>RequestDataFrame</code> 投进 <code>DataReceived</code>。</li>
+    <li>写循环（<code>Write()</code>）：从 <code>dataToSend</code> 出队写入 <code>net.Conn</code>，出错即关。</li>
+  </ul>
+
+  <h3>3.3 · 心跳与空闲超时 <span class="kicker">dispatch.go</span></h3>
+  <ul>
+    <li>心跳：客户端定时发 <code>HeartBeat</code>（正常路由，仅刷新 <code>lastRecvUnixNano</code>）。</li>
+    <li><code>eventLoop</code> 的 <code>idleCheckTicker</code>（每 1 分钟）读 <code>LastReadAt()</code>，超过 <code>DefaultSessionIdleTimeout</code>（10 分钟）判心跳超时，日志后主动 <code>session.Close()</code>。</li>
+  </ul>
+
+  <h3>3.4 · 断线 / 顶号 / 重连 <span class="kicker">registry.go · online_playerer_registry.go</span></h3>
+  <ul>
+    <li><strong>主动顶号</strong>：重复登录时（见 §5）注册表发现旧 session，发 <code>SendAndClose(PushReplacingLogin{})</code> 顶掉。</li>
+    <li><strong>断线（session 层）</strong>：<code>OnSessionClosed</code> 解绑 <code>playerId</code>，<code>session.Unbind</code> 清理 <code>ownerId↔sid</code>；客户端重连需重新登录（纯状态在内存）。</li>
+    <li><strong>网关模式</strong>：解绑在线玩家，等网关重连后重建 <code>gateSession</code>。</li>
+  </ul>
+</section>
+
+<!-- 4 路由分发 -->
+<section class="section" id="s4">
+  <div class="hd"><span class="num">04</span><h2>路由分发与消息处理 <span>（核心）</span></h2></div>
+
+  <h3>4.1 · 会话级消息链 IoDispatch <span class="kicker">network/dispatch</span></h3>
+  <p>每封 <code>DataReceived</code> 帧经 <code>eventLoop → OnMessageReceived → BaseIoDispatch.Pipeline</code>（有序链）逐段执行，任一返回 <code>false</code> 终止本帧：</p>
+<pre><code><span class="cm">pipeline = [ GateTransformHandler(仅网关模式) → GameMessageHandler ]</span></code></pre>
+
+  <h3>4.2 · GateTransformHandler（网关模式）</h3>
+  <p>拆解 <code>TransferGateToLogic</code> 外层：取出内层 <code>Cmd/Index/PlayerId/Body</code>，用 <code>json</code> 解码出真正的 <code>ReqXxx</code>，回填 <code>frame.Header</code> 后放行；非转运消息直接放行。</p>
+
+  <h3>4.3 · GameDispatch（cmd/game/dispatch.go）</h3>
+  <ol class="steps">
+    <li><span class="n">1</span><span class="d"><strong>补齐 playerId</strong>：<code>fillPayloadFromSession</code> 从 session 的 <code>ownerId</code> 取。</span></li>
+    <li><span class="n">2</span><span class="d"><strong>取 handler</strong>：<code>router.GetHandler(cmd)</code> 查 <code>network.Handler</code>。</span></li>
+    <li><span class="n">3</span><span class="d"><strong>参数校验</strong>：带 <code>NeedValidate</code> 则 <code>ValidateStruct</code>，失败回 <code>I18N_COMMON_PROTOCOL_VALIDATION_FAILED</code> 并终止。</span></li>
+    <li><span class="n">4</span><span class="d"><strong>打印日志</strong>：<code>logInboundMessage</code>（忽略心跳）。</span></li>
+    <li><span class="n">5</span><span class="d"><strong>Actor 串行投递</strong>：
+      <ul>
+        <li>登录消息（<code>CmdReqPlayerLogin</code>）→ 共享 <code>SharedAnonymousActor</code>。</li>
+        <li>其它 → <code>game/player/&lt;playerId&gt;</code> 的玩家 Actor（<code>GetOrCreate</code>，懒创建）。保证同一玩家消息<strong>单协程串行</strong>。</li>
+        <li>邮箱满 / 关闭则丢弃该帧。</li>
+      </ul></span></li>
+    <li><span class="n">6</span><span class="d"><strong>dispatchMessage</strong>：<code>callGeneratedRouteHandler</code> 静态派发（<code>route_dispatch_gen.go</code>）首选，缺失则反射兜底；带 panic 回收与错误回包。</span></li>
+    <li><span class="n">7</span><span class="d"><strong>回包</strong>：直连 <code>session.Send</code>；网关模式走 <code>io.NotifyByPlayerId</code>。</span></li>
+  </ol>
+
+  <h3>4.4 · 静态路由（约定 > 配置）</h3>
+  <p><code>network/handler.go</code> 扫描导出方法签名自动登记：<code>(receiver, [playerId], [session], [index], reqIndex 尾参为 Ptr)</code> 即为 handler；<code>Cmd</code> 与 <code>Handler</code> 存 <code>Handlers map[int32]*Handler</code>。方法名 <code>ReqXxx</code> 与返回 <code>ResXxx</code> 由代码生成器关联。改动协议/签名后必须 <code>go generate ./cmd/game</code>，保持 <code>register_gen.go</code> 与 <code>route_dispatch_gen.go</code> 一致。</p>
+
+  <h3>4.5 · 推送通道 <span class="kicker">internal/io/notify</span></h3>
+  <ul>
+    <li><code>NotifyByPlayerID(playerID, index, resp)</code>：直连 → <code>session.Send</code>；网关模式 → 封装 <code>TransferGateToServer</code> 经 <code>gateSession</code> 发回网关。</li>
+  </ul>
+</section>
+
+<!-- 5 登录认证 -->
+<section class="section" id="s5">
+  <div class="hd"><span class="num">05</span><h2>登录认证（DoLogin）</h2></div>
+<pre><code>ReqPlayerLogin ──► PlayerRoute.ReqLogin ──► PlayerService.DoLogin</code></pre>
+  <ol class="steps">
+    <li><span class="n">1</span><span class="d">校验 <code>msg.PlayerId</code> 非空；<code>newCreated = 资料索引中不存在</code>。</span></li>
+    <li><span class="n">2</span><span class="d"><strong>GetOrCreatePlayer</strong>：<code>Repo.GetPlayer</code>（命中内存/DB 恢复），无则新建并 <code>SavePlayer</code>。</span></li>
+    <li><span class="n">3</span><span class="d"><strong>顶号</strong>（直连模式）：注册表找旧 session → <code>SendAndClose(PushReplacingLogin)</code>；网关模式转到网关端判断。</span></li>
+    <li><span class="n">4</span><span class="d"><strong>绑定</strong>：<code>s.SetOwnerId(id)</code> + <code>session.Bind(sid, id)</code>，<code>AddOnlinePlayer</code> 登记在线。</span></li>
+    <li><span class="n">5</span><span class="d"><strong>异步 goroutine</strong>：每日/每周重置检测（补离线段）、发布 <code>PlayerLogin</code>、<code>PushLoadComplete</code>。</span></li>
+    <li><span class="n">6</span><span class="d">返回 <code>ResPlayerLogin</code>（id / level / name 等）。</span></li>
+  </ol>
+  <blockquote>身份绑定落在 <code>session.Bind</code>（<code>ownerId↔sid</code> 双向映射）与 <code>OnlinePlayerRegistry</code>。登录之后 <code>frame.Header.Payload</code> 即为 <code>playerId</code>，路由与推送都依赖它。</blockquote>
+</section>
+
+<!-- 6 缓存与持久化 -->
+<section class="section" id="s6">
+  <div class="hd"><span class="num">06</span><h2>缓存与 MySQL 持久化</h2></div>
+
+  <h3>6.1 · 缓存层 <span class="kicker">cache + 资料索引</span></h3>
+  <ul>
+    <li><strong>进程内缓存</strong> <code>manager.go</code>：30 分钟过期、10 秒清理，未命中回源 <code>loader</code>。</li>
+    <li><strong>玩家资料索引</strong> <code>PlayerProfileService</code>：启动预载全部摘要，供列表 / 好友 / 匹配。</li>
+    <li><strong>玩家聚合缓存</strong> <code>PlayerRepository.GetPlayer</code>：内存优先，未命中 <code>GetPlayerByID</code> 回源并缓存；<code>SavePlayer</code> 写缓存 + <code>AsyncDBService.SaveToDb</code>。</li>
+    <li><strong>OnlinePlayerRegistry</strong>：<code>playerId→session</code> 与在线集合（心跳 / 推送 / 每日重置遍历）。</li>
+  </ul>
+
+  <h3>6.2 · 回写链路（异步持久化） <span class="kicker">persist 包</span></h3>
+<pre><code>业务改玩家 → 事件总线(PlayerAttr/EntityChange) → SavePlayer
+   → PlayerPO 快照 → AsyncDBService.SaveToDb → EntitySavingStrategy → Db.Save/Delete</code></pre>
+  <p><code>AsyncDBService</code> 分工：</p>
+  <ul>
+    <li><strong>playerWorker</strong>：<code>PersistContainerGroup</code>（<code>NumCPU()</code> 个<strong>延时容器</strong>分片，同 id 哈希落同片保序），对同一玩家 3 秒内合并为<strong>一份最新快照</strong>，到期才落一次；落库期间再被更新会重新调度，保最终一致。</li>
+    <li><strong>commonWorker</strong>：<code>QueueContainer</code>，逐条串行，适合非玩家实体。</li>
+    <li><code>EntitySavingStrategy.DoSave</code>：<code>IsDeleted()</code> → <code>Db.Delete</code>；否则 <code>Db.Save</code>（upsert）。</li>
+    <li>失败自动重试 + 5 分钟一次错误日志降噪。</li>
+  </ul>
+
+  <h3>6.3 · 优雅冲刷（Shutdown）</h3>
+<pre><code>node.Stop() 先停收新连接
+  └─ AsyncDBService.Shutdown()
+       playerWorker.ShutdownGraceful()  <span class="cm">// DelayContainer</span>
+       commonWorker.ShutdownGraceful()   <span class="cm">// QueueContainer</span></code></pre>
+  <ul>
+    <li><code>DelayContainer.ShutdownGraceful</code>：<code>running=false</code> → <code>wg.Wait()</code> 等已调度任务 → <code>Range</code> 把 <code>pending</code> 中<strong>剩余最新快照全部</strong> <code>DoSave</code> 落库，<em>再补一次兜底</em>。</li>
+    <li><code>QueueContainer</code> 同理：<code>close(queue)</code> → <code>wg.Wait</code> → <code>Range</code> 剩余落库。</li>
+  </ul>
+  <blockquote>因此关服<strong>不丢账</strong>——无论是否到达延时窗口，全部已变更数据都会落库。</blockquote>
+
+  <h3>6.4 · 启动数据恢复（与停服对应）</h3>
+  <ul>
+    <li>玩家档案：登录即按需 <code>repo.GetPlayer(id)</code> 从 DB 读出并缓存；全量索引启动时一条 <code>SELECT</code> 摘要建好。</li>
+    <li>系统时间线（每日 / 每周 / 每月重置、开服）：<code>System.StartSystemTask()</code> 从 <code>SystemParameterEnt</code> 载入断点，定时驱动，跨服重启重置不重。</li>
+    <li>业务配置 <code>config.InitConfig()</code> 一次性载入进程内存。</li>
+  </ul>
+</section>
+
+<!-- 7 定时任务与 Actor -->
+<section class="section" id="s7">
+  <div class="hd"><span class="num">07</span><h2>定时任务与 Actor</h2></div>
+
+  <h3>7.1 · Actor 并发 <span class="kicker">actor 包</span></h3>
+  <ul>
+    <li><code>ActorSystem.Spawn / GetOrCreate</code>：每玩家一个 ActorRef（邮箱 256），<code>Tell</code> 投递，<code>runActorLoop</code> 单协程串行消费（CSP）；<code>handleMessageSafely</code> 兜住条消息 panic。保险 <code>ActorRef.Task(fn)</code> 供离线重置等。</li>
+    <li>系统级：<code>SharedAnonymousActor</code> 处理登录等匿名消息；<code>PlayerTaskDispatcher.DispatchPlayerTask</code> 按 playerId 往玩家串行队列塞任务。</li>
+  </ul>
+
+  <h3>7.2 · 定时任务 <span class="kicker">schedule + system</span></h3>
+  <ul>
+    <li>表注册 cron/表达式：<code>Schedule(task, delayMs)</code>（<code>DefaultTaskScheduler</code>，支持取消）。</li>
+    <li>系统服务：开服、每日 / 每周 / 每月重置——读取 <code>SystemParameterEnt</code> 断点，重置时广播全部在线玩家并补离线段；活动 <code>ScheduleAllActivity</code> 也走这套。</li>
+  </ul>
+</section>
+
+<!-- 8 优雅停服 -->
+<section class="section" id="s8">
+  <div class="hd"><span class="num">08</span><h2>优雅停服完整时序</h2></div>
+  <ol class="steps">
+    <li><span class="n">1</span><span class="d">收到 <code>SIGTERM</code> / <code>os.Interrupt</code> / <code>/api/stop</code>，入口 break 出阻塞。</span></li>
+    <li><span class="n">2</span><span class="d"><code>node.Stop()</code>：<code>http.Server.Shutdown(3s)</code> 停收新 WS、<code>listener.Close()</code>，并触 <code>OnSessionClosed</code> 逐个解绑在线玩家（不再进新业务）。</span></li>
+    <li><span class="n">3</span><span class="d"><code>s.DbService.Shutdown()</code>：冲刷所有待落库数据（见 6.3）。</span></li>
+    <li><span class="n">4</span><span class="d">打印 <code>game server is closed</code>，进程结束。</span></li>
+  </ol>
+  <blockquote>停服不再接纳新玩家 / task；关闭期间变更照常进入 <code>AsyncDBService</code>（stop 后入列即被 <code>ShutdownGraceful</code> 立即冲刷）——<strong>不丢账</strong>。</blockquote>
+</section>
+
+<!-- 9 其余入口 -->
+<section class="section" id="s9">
+  <div class="hd"><span class="num">09</span><h2>其余入口</h2></div>
+  <table>
+    <tbody>
+      <tr><th>文件</th><th>职责</th></tr>
+      <tr><td><code>cmd/game/http.go</code></td><td>后台 gin 管理：<code>POST /api/stop</code> 触发优雅停服并 <code>node.RunningChan</code> 通知主循环；<code>POST /api/clearDb</code> 清理库（生产建议禁用 / 收紧）。</td></tr>
+      <tr><td><code>cmd/game/pprof.go</code></td><td><code>pprof.addr</code> 配置则起 <code>net/http/pprof</code> 性能监控。</td></tr>
+      <tr><td><code>cmd/game/route_dispatch_gen.go</code></td><td>静态派发表（勿手改，<code>go generate</code> 维护）。</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 附 关键代码文件 -->
+<section class="section" id="s10">
+  <div class="hd"><span class="num">附</span><h2>关键源码坐标速查</h2></div>
+  <table>
+    <tbody>
+      <tr><th>关注点</th><th>位置</th></tr>
+      <tr><td>入口 / 停服</td><td><code>cmd/game/main.go</code></td></tr>
+      <tr><td>派发链 / 路由分发</td><td><code>cmd/game/dispatch.go</code>、<code>network/handler.go</code></td></tr>
+      <tr><td>会话 / 读解包 / 心跳</td><td><code>network/session/base_session.go</code>、<code>io.go</code>、<code>network/dispatch/dispatch.go</code>、<code>network/protocol/protocol.go</code></td></tr>
+      <tr><td>在线 / 顶号</td><td><code>internal/infra/net/online_playerer_registry.go</code>、<code>network/session/registry.go</code></td></tr>
+      <tr><td>登录</td><td><code>internal/service/player/player_service.go</code>（DoLogin）、<code>internal/infra/repository/player</code></td></tr>
+      <tr><td>异步落库</td><td><code>internal/infra/persistence/async_db_service.go</code>、<code>persist/*.go</code></td></tr>
+      <tr><td>缓存 / 索引</td><td><code>cache/</code>、<code>PlayerProfileService</code></td></tr>
+      <tr><td>Actor</td><td><code>actor/</code>、<code>cmd/game/actor.go</code>、<code>internal/service/dispatch</code></td></tr>
+      <tr><td>定时 / 重置</td><td><code>internal/system/</code>、<code>common/schedule/</code></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<hr class="rule">
+<p class="foot">由 <code>docs/game/game.md</code> 整理 · 自包含单文件 · 深色表白适应</p>
+
+</main>
+</div>
+</div>
+
+<script>
+// 侧栏当前章节高亮
+(function(){
+  var links=[].slice.call(document.querySelectorAll('.toc a'));
+  if(!links.length||!('IntersectionObserver' in window))return;
+  var map={};links.forEach(function(a){map[a.getAttribute('href').slice(1)]=a});
+  var obs=new IntersectionObserver(function(es){
+    es.forEach(function(e){if(!e.isIntersecting)return;
+      links.forEach(function(a){a.classList.remove('active')});
+      var a=map[e.target.id];if(a)a.classList.add('active');
+    });
+  },{rootMargin:'-45% 0px -55% 0px'});
+  links.forEach(function(a){var t=document.getElementById(a.getAttribute('href').slice(1));if(t)obs.observe(t)});
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>gforgame 网关（cmd/gate）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* 亮色：冷蓝图 + 墨青 */
+  --paper:#E9EDF2;
+  --card:#FBFCFE;
+  --ink:#1A2F38;
+  --ink-2:#435962;
+  --muted:#6B7E88;
+  --hair:#D9E2E8;
+  --hair-strong:#C3D0D7;
+  --amber:#b8660b;
+  --amber-in:#8a4c04;
+  --sky:#1f6f93;
+  --sky-in:#17566f;
+
+  --sans:"IBM Plex Sans",-apple-system,"PingFang SC","Microsoft YaHei",system-ui,Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,"Courier New",monospace;
+  --rail:252px;
+  --measure:720px;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --paper:#10171c;--card:#1a232b;--ink:#e6edf1;--ink-2:#c4d1d8;
+    --muted:#8799a3;--hair:#2b3943;--hair-strong:#3e505c;
+    --amber:#e3a451;--amber-in:#f0c386;--sky:#5bb0d0;--sky-in:#8fd4ec;
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+body{
+  margin:0;color:var(--ink);background:var(--paper);
+  font-family:var(--sans);font-size:16px;line-height:1.72;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+}
+::selection{background:rgba(184,102,11,.18)}
+
+/* ---------- 框架 ---------- */
+.wrap{max-width:1280px;margin:0 auto;padding:0 26px}
+.grid{display:grid;grid-template-columns:var(--rail) 1fr;column-gap:64px;padding-top:6px}
+main{max-width:var(--measure);min-width:0;padding-bottom:120px}
+
+/* 顶栏 */
+.topbar{position:sticky;top:0;z-index:20;
+  background:color-mix(in srgb,var(--card) 85%,transparent);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--hair)}
+.topinner{max-width:1280px;margin:0 auto;padding:13px 26px;
+  display:flex;align-items:baseline;justify-content:space-between;gap:16px}
+.brand{font-family:var(--mono);font-size:.78rem;letter-spacing:.08em;color:var(--muted)}
+.brand b{font-weight:600;color:var(--ink)}
+.pagetitle{font-weight:600;font-size:.96rem}
+.pagetitle small{display:block;font-weight:400;color:var(--muted);
+  font-size:.7rem;letter-spacing:.08em;font-family:var(--mono)}
+
+/* ---------- 侧栏 ---------- */
+aside{position:sticky;top:98px;align-self:start;height:max-content;
+  max-height:calc(100vh - 150px);overflow:auto;padding-right:8px}
+aside .cap{font-family:var(--mono);font-size:.72rem;letter-spacing:.1em;
+  color:var(--muted);margin:0 0 8px 4px}
+.toc{list-style:none;margin:0;padding:0;border-left:1px solid var(--hair)}
+.toc a{display:block;padding:6px 0 6px 16px;margin-left:-1px;
+  border-left:2px solid transparent;color:var(--muted);text-decoration:none;
+  font-size:.89rem;line-height:1.35}
+.toc a:hover{color:var(--ink)}
+.toc a.active{border-left-color:var(--amber);color:var(--ink)}
+.toc .sub a{padding-left:32px;font-size:.83rem}
+@media (max-width:1020px){ .grid{grid-template-columns:1fr} aside{display:none} }
+@media (max-width:520px){ .pagetitle small{display:none} }
+
+/* ---------- Hero ---------- */
+.hero{padding-top:58px}
+.hero h1{font-size:clamp(2.1rem,5.2vw,3.1rem);font-weight:300;
+  letter-spacing:-.02em;line-height:1.1;margin:0 0 18px}
+.hero h1 b{font-weight:500}
+.lede{font-size:1.06rem;color:var(--ink-2);max-width:60ch;margin:0 0 36px}
+
+/* 传输图 */
+.heroflow{margin:0 0 10px;padding:26px 26px 18px;
+  border:1px solid var(--hair);border-radius:16px;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--card) 88%,var(--sky) 6%),var(--card) 55%)}
+.nodes{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.term{flex:0 0 auto;min-width:96px;display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 6px}
+.term .k{font-weight:600;font-size:.98rem}
+.term .m{font-family:var(--mono);font-size:.7rem;color:var(--muted)}
+.term.main{border:1px solid var(--hair-strong);border-radius:12px;background:var(--card);
+  box-shadow:0 14px 40px -22px rgba(10,30,40,.5);padding:14px 18px}
+.term.main .k{color:var(--amber-in)}
+.bay{flex:1 1 auto;min-width:52px;padding:0 4px}
+.bay .link{display:flex;align-items:center;gap:7px;margin:3px 0}
+.bay .link b{font-family:var(--mono);font-size:.66rem;font-weight:500;color:var(--amber-in);letter-spacing:.04em}
+.bay .link svg{flex:1;height:22px;color:var(--amber);overflow:visible}
+.bay .link svg line{stroke:currentColor;stroke-width:1.6}
+.bay .link svg path{fill:currentColor;stroke:none}
+.bay .link.down svg{color:var(--sky)}
+.bay .link.down b{color:var(--sky-in)}
+.hero figcaption{margin-top:16px;padding-top:12px;border-top:1px dashed var(--hair-strong);
+  font-size:.78rem;color:var(--muted)}
+.hero figcaption .dot{display:inline-block;width:8px;height:8px;border-radius:50%;
+  margin:0 6px 0 10px;vertical-align:-1px}
+.hero figcaption .dot.up{background:var(--amber)}
+.hero figcaption .dot.down{background:var(--sky)}
+.hero figcaption .dot:first-child{margin-left:0}
+
+/* ---------- 正文 ---------- */
+.section{margin-top:92px;scroll-margin-top:118px}
+.section:first-of-type{margin-top:0}
+.hd{display:flex;align-items:center;gap:15px;margin-bottom:10px}
+.hd .num{font-family:var(--mono);font-weight:500;font-size:.78rem;line-height:1.5;white-space:nowrap;
+  color:var(--amber);border:1px solid currentColor;border-radius:999px;padding:1px 10px 0}
+.section h2{margin:0;font-size:1.5rem;font-weight:600;letter-spacing:-.01em}
+.section h3{margin:2.3rem 0 .7rem;font-size:1.1rem;font-weight:600;letter-spacing:-.005em}
+.section h3 .kicker{font-family:var(--mono);color:var(--muted);font-size:.76rem;font-weight:400}
+p{margin:.85rem 0}
+a{color:var(--sky-in);text-decoration:none}
+a:hover{text-decoration:underline}
+strong{font-weight:600}
+
+code,kbd{font-family:var(--mono)}
+:not(pre)>code{font-size:.85em;
+  background:color-mix(in srgb,var(--hair-strong) 24%,transparent);
+  border-radius:5px;padding:.12em .42em}
+pre{background:#18262e;color:#d9e6ec;border:1px solid var(--hair);
+  border-radius:12px;padding:18px 20px;overflow-x:auto;
+  font-family:var(--mono);font-size:.78rem;line-height:1.66;
+  box-shadow:inset 0 -36px 60px -54px rgba(0,0,0,.6)}
+pre .cm{opacity:.52}
+pre code{background:none;padding:0;font-size:inherit;color:inherit}
+
+ul,ol{margin:.6rem 0 .6rem 1.2rem;padding:0}
+li{margin:.32rem 0}
+.steps{list-style:none;margin:1rem 0 .2rem;padding:0}
+.steps li{display:grid;grid-template-columns:44px 1fr;gap:14px;padding:12px 0;
+  border-bottom:1px solid var(--hair);align-items:baseline}
+.steps li:last-child{border-bottom:none}
+.steps .n{font-family:var(--mono);font-size:.8rem;font-variant-numeric:tabular-nums;
+  color:var(--amber);padding-top:2px}
+.steps .n:after{content:"\2192";color:var(--muted);margin-left:6px;font-size:.72rem}
+.steps ul{list-style:disc;margin:.35rem 0 .15rem 1.1rem}
+.steps ul li{margin:.15rem 0}
+
+table{width:100%;border-collapse:collapse;margin:1.1rem 0;font-size:.93rem}
+th,td{text-align:left;padding:11px 13px;border-bottom:1px solid var(--hair);vertical-align:top}
+th{font-weight:600;color:var(--ink-2);font-family:var(--mono);font-size:.78rem;letter-spacing:.02em}
+td code{white-space:nowrap}
+tr:last-child td{border-bottom:none}
+
+blockquote{margin:1.2rem 0;padding:3px 0 3px 20px;border-left:3px solid var(--amber);
+  color:var(--ink-2);font-size:.95rem}
+blockquote p{margin:.4rem 0}
+
+.rule{height:1px;border:none;background:linear-gradient(90deg,var(--hair) 0%,transparent 100%);margin:100px 0 30px}
+.foot{color:var(--muted);font-size:.85rem}
+</style>
+</head>
+<body>
+
+<!-- 顶栏 -->
+<div class="topbar">
+  <div class="topinner">
+    <div class="brand">gforgame<b>/</b>gate</div>
+    <div class="pagetitle">cmd/gate 网关说明<small>CLIENT → GATEWAY → LOGIC</small></div>
+  </div>
+</div>
+
+<div class="wrap">
+<div class="grid">
+
+<!-- 侧栏 -->
+<aside id="rail">
+  <p class="cap">目录</p>
+  <nav class="toc" aria-label="章节">
+    <a href="#s1">1 · 角色与定位</a>
+    <a href="#s2">2 · 启动与运行</a>
+    <a href="#s21" class="sub">2.1 · 启动流程</a>
+    <a href="#s3">3 · 消息流转</a>
+    <a href="#s4">4 · 后端连接池与重连</a>
+    <a href="#s5">5 · 出站队列</a>
+    <a href="#s6">6 · 协议适配与跨语言</a>
+    <a href="#s7">7 · 配置</a>
+    <a href="#s8">8 · 常见配置动作</a>
+    <a href="#s9">9 · 关键代码文件</a>
+  </nav>
+</aside>
+
+<main>
+
+<!-- Hero -->
+<header class="hero">
+  <h1>让消息<br>穿过<b>一台中转机</b></h1>
+  <p class="lede"><code>cmd/gate</code> 是 gforgame 的网关进程——客户端不直连逻辑服，而是先把流量交给网关，由它负责转发、鉴权与在线管理，让故障与扩容对客户端透明。</p>
+</header>
+
+<!-- 传输图：唯一的记忆点 -->
+<figure class="hero">
+  <div class="hero-flow">
+    <div class="nodes">
+
+      <div class="term">
+        <span class="k">客户端</span>
+        <span class="m">client</span>
+      </div>
+
+      <div class="bay">
+        <div class="link"><b>上行</b>
+          <svg viewBox="0 0 90 22" aria-hidden="true"><line x1="4" y1="11" x2="72" y2="11"/><path d="M67 5l9 6-9 6z"/></svg>
+        </div>
+        <div class="link down"><b>下行</b>
+          <svg viewBox="0 0 90 22" aria-hidden="true"><line x1="86" y1="11" x2="18" y2="11"/><path d="M23 5l-9 6 9 6z"/></svg>
+        </div>
+      </div>
+
+      <div class="term main">
+        <span class="k">网关</span>
+        <span class="m">cmd/gate</span>
+      </div>
+
+      <div class="bay">
+        <div class="link"><b>上行</b>
+          <svg viewBox="0 0 90 22" aria-hidden="true"><line x1="4" y1="11" x2="72" y2="11"/><path d="M67 5l9 6-9 6z"/></svg>
+        </div>
+        <div class="link down"><b>下行</b>
+          <svg viewBox="0 0 90 22" aria-hidden="true"><line x1="86" y1="11" x2="18" y2="11"/><path d="M23 5l-9 6 9 6z"/></svg>
+        </div>
+      </div>
+
+      <div class="term">
+        <span class="k">逻辑服</span>
+        <span class="m">logic</span>
+      </div>
+
+    </div>
+    <figcaption>
+      <span class="dot up"></span>上行 · 客户端 → 逻辑服
+      <span class="dot down"></span>下行 · 逻辑服 → 客户端
+    </figcaption>
+  </div>
+</figure>
+
+<hr class="rule">
+
+<!-- 1 角色与定位 -->
+<section class="section" id="s1">
+  <div class="hd"><span class="num">01</span><h2>角色与定位</h2></div>
+  <p><strong>进程</strong>：<code>cmd/gate</code>，独立可执行程序，作为客户端与逻辑服之间的<b>桥梁</b>，承载协议中转。</p>
+  <ul>
+    <li><strong>对外（面向客户端）</strong>：WebSocket 服务，承担<em>登录鉴权</em>与<em>消息转发</em>，监听地址为 <code>ServerUrl</code>（见「配置」）。</li>
+    <li><strong>对内（面向逻辑服）</strong>：以 WebSocket 客户端身份，对每个逻辑服节点各维持<strong>一条</strong>连接（单连接模型）。</li>
+    <li>网关只做<strong>转发与在线管理</strong>，不做业务逻辑——对客户端完全透明。</li>
+  </ul>
+</section>
+
+<!-- 2 启动与运行 -->
+<section class="section" id="s2">
+  <div class="hd"><span class="num">02</span><h2>启动与运行</h2></div>
+<pre><code><span class="cm"># 编译（部署）</span>
+make gate            <span class="cm"># 本机编译 → bin/gate</span>
+make build-linux     <span class="cm"># 交叉编译 linux/amd64</span>
+
+<span class="cm"># 运行</span>
+make run-gate        <span class="cm"># 等价于 ENV=gate ./bin/gate</span>
+go run ./cmd/gate    <span class="cm"># 或源码直接跑</span></code></pre>
+
+  <p><strong>环境变量 <code>ENV</code> 决定加载哪份配置</strong>：<code>ENV=gate</code> → 读取 <code>config/config-gate.yml</code>，并叠加全局 <code>config/default.yml</code>（<code>servers</code> 节点表）。</p>
+  <p><strong>节点归属</strong>：<code>config-gate.yml</code> 只写 <code>server.id</code>；该 id 会在 <code>default.yml</code> 的 <code>servers</code> 中定位节点，节点的 <code>addr</code> 即网关对外监听的 <strong>WebSocket 地址</strong>。</p>
+  <p>仓库默认：<code>server.id=10001</code> → <code>type:0</code> 节点 → 网关监听 <code>0.0.0.0:8010</code>。</p>
+
+  <h3 id="s21"><span class="kicker">2.1 ·</span> 启动流程 <span class="kicker">main.go</span></h3>
+  <ol class="steps">
+    <li><span class="n">1</span><span class="d"><strong>读配置</strong>：<code>ServerConfig</code> 载入 <code>config-gate.yml</code> 与 <code>default.yml</code>。</span></li>
+    <li><span class="n">2</span><span class="d"><strong>服务发现初始化</strong>（按 <code>discovery.onlylocal</code>）：
+      <ul>
+        <li><code>true</code>（默认）→ 按本地配置同步一次，每 5 分钟再收敛。</li>
+        <li><code>false</code> → HTTP 拉取列表并同步，每 5 分钟刷新。</li>
+      </ul></span></li>
+    <li><span class="n">3</span><span class="d"><strong>后台协程</strong>：<code>startBackendSessionMonitor()</code>（每 3s 巡检）+ <code>startOutboundDispatcher()</code>（出站队列）。</span></li>
+    <li><span class="n">4</span><span class="d"><strong>构建网络层</strong>：<code>NewMessageRoute()</code> 与在线玩家注册表。</span></li>
+    <li><span class="n">5</span><span class="d"><strong>两个派发器</strong>：客户端侧 <code>ClientRouter</code>（登录 / 转发）× 逻辑侧 <code>LogicRouter</code>（下行 / 上线上报）。</span></li>
+    <li><span class="n">6</span><span class="d"><strong>启动 WebSocket</strong>：<code>ws.NewServer(...)</code>（裸 body 载荷）。</span></li>
+    <li><span class="n">7</span><span class="d"><strong>阻塞等待退出</strong>信号（<code>os.Interrupt</code> / <code>SIGTERM</code>）。</span></li>
+    <li><span class="n">8</span><span class="d"><strong>优雅关服</strong>：停发现、巡检、出站队列，并关闭所有后端连接。</span></li>
+  </ol>
+</section>
+
+<!-- 3 消息流转 -->
+<section class="section" id="s3">
+  <div class="hd"><span class="num">03</span><h2>消息流转</h2></div>
+
+  <h3>3.1 · 客户端 → 网关 → 逻辑服（上行）</h3>
+<pre><code><span class="cm">客户端</span>
+ └─ ws 消息 → ClientRouter.MessageReceived(session, frame)
+     ├─ cmd == LoginCmd()（ReqPlayerLogin）
+     │     └─ HandleLoginReq: 校验 → 顶号 → 绑定 → 在线注册 → transferMsgToLogic
+     └─ 其它 cmd
+           └─ transferMsgToLogic: 解析目标 serverID, 转发到后端
+                 ├─ 确定 serverID : 登录自带 / resolvePlayerServerID 映射
+                 ├─ NewTransferMessage(playerId, cmd, index, body)
+                 └─ enqueueTransfer(serverID, transfer, index) → 出站队列</code></pre>
+
+  <h3>3.2 · 登录处理 <span class="kicker">HandleLoginReq</span></h3>
+  <ol class="steps">
+    <li><span class="n">1</span><span class="d">解码 <code>ReqPlayerLogin</code>，取 <code>playerId</code> 与 <code>serverId</code>。</span></li>
+    <li><span class="n">2</span><span class="d">校验非空，且 <code>isBackendServerConfigured(serverId)</code> 为真。</span></li>
+    <li><span class="n">3</span><span class="d"><strong>顶号</strong>：若该键已在线，给旧连接发 <code>ReplacingLoginPush</code> 后关闭。</span></li>
+    <li><span class="n">4</span><span class="d">绑定 <code>sessionPlayerKey = &lt;serverId&gt;_&lt;playerId&gt;</code>，写入在线注册表与全局会话表。</span></li>
+    <li><span class="n">5</span><span class="d">记录 <code>playerId → serverId</code> 映射（<code>playerServerIDMap</code>）。</span></li>
+    <li><span class="n">6</span><span class="d">将登录请求作为普通转发消息发给目标逻辑服。</span></li>
+  </ol>
+
+  <h3>3.3 · 逻辑服 → 网关 → 客户端（下行）</h3>
+<pre><code>后端 session → consumeBackendSession → logicIoDispatcher.OnMessageReceived
+  └─ LogicRouter.MessageReceived
+      ├─ cmd == TransferCmd()（TransferGateToLogic）
+      │     └─ forwardTransferToClient:
+      │           ├─ 取 playerId / cmd / index / body
+      │           ├─ resolveBackendServerID(会话) → serverID
+      │           ├─ 以 serverId_playerId 定位客户端 session
+      │           └─ 用客户端 codec 重编码 → session.SendRaw 原样发回
+      └─ 其它非法/未知 → 忽略</code></pre>
+
+  <h3>3.4 · 下线</h3>
+  <p><code>OnSessionClosed</code> 触发（仅当自己确实是该玩家的当前会话，规避顶号竞态）：</p>
+  <ul>
+    <li>确认 <code>sessionPlayerKey</code> 仍为当前绑定 → <code>notifyLogicPlayerLogout</code> 通知后端清理在线状态，<code>unbindPlayerServer</code> 删除映射。</li>
+    <li>从在线注册表 <code>RemoveOnlinePlayer</code>。</li>
+  </ul>
+</section>
+
+<!-- 4 后端连接池与重连 -->
+<section class="section" id="s4">
+  <div class="hd"><span class="num">04</span><h2>后端连接池与重连</h2></div>
+  <p><code>backendPools</code> 以 <code>serverID</code> 为键，每个逻辑服节点<strong>只维持一条连接</strong>。</p>
+  <ul>
+    <li><strong>收敛</strong> <code>reconcileBackendPools(desired)</code>：新增 → 拨号；地址变化 → 关旧连新；消失 → 关闭并清理。</li>
+    <li><strong>拨号</strong> <code>connectBackendSession</code>：成功后先替换、再关旧连接（避免空窗），随后触发 <code>notifyOutboundDispatcher</code>。</li>
+    <li><strong>消费</strong> <code>consumeBackendSession</code>：常驻监听 <code>DieChan()</code>（断开）与 <code>DataReceivedChan()</code>（下行帧）。</li>
+    <li><strong>重连</strong> <code>scheduleReconnect</code>：延迟 1500ms，失败则限流记日志并再次调度；已移除节点不重连。</li>
+    <li><strong>巡检</strong> <code>checkBackendSessions</code>：每 3s 巡检，发现死连接即清理并调度重连。</li>
+  </ul>
+</section>
+
+<!-- 5 出站队列 -->
+<section class="section" id="s5">
+  <div class="hd"><span class="num">05</span><h2>出站队列（缓冲与容错）</h2></div>
+  <p><code>outboundQueue</code>（容量 4096）+ <code>LimitedList</code>（上限 4096），逐个 <code>sendTransferToBackend</code> 推向后端：</p>
+  <ul>
+    <li>后端不可用 → 保留在 pending，等重连或 <code>notify</code> 后补发。</li>
+    <li>超出上限 → 丢弃最旧一条并记日志，防止无限堆积。</li>
+    <li><code>enqueueTransfer</code> 在队列满时阻塞写，保证消息不丢。</li>
+  </ul>
+  <blockquote>与 README 一致：“服务器故障时网关缓存消息、恢复后补发”——客户端无需重连即可继续通信。</blockquote>
+</section>
+
+<!-- 6 协议适配与跨语言 -->
+<section class="section" id="s6">
+  <div class="hd"><span class="num">06</span><h2>协议适配与跨语言</h2></div>
+  <p>协议通过 <code>gateway/contract</code> 接口解耦：</p>
+  <table>
+    <tbody>
+      <tr><th>接口</th><th>作用</th></tr>
+      <tr><td><code>ClientLoginAdapter</code></td><td>登录协议最小契约：<code>LoginCmd</code> / 解码 / 顶号推送</td></tr>
+      <tr><td><code>TransferCodec</code></td><td>转发包契约：<code>TransferCmd</code> / 构造 / 解析</td></tr>
+    </tbody>
+  </table>
+  <p>当前实现 <code>internal/gatewayadapter/proto_gate_adapter.go</code>：</p>
+  <ul>
+    <li><code>LoginCmd() = protos.CmdReqPlayerLogin</code></li>
+    <li><code>TransferCmd() = protos.CmdTransferMsgGateToLogic</code></li>
+    <li>转发包 <code>TransferGateToLogic{ PlayerId, Cmd, Index, Body []byte }</code>，顶号推送 <code>PushReplacingLogin</code></li>
+  </ul>
+  <p>若后端为其它语言（如 Java 版 jforgame），只需新写一套实现 <code>contract</code> 的 adapter 并对齐协议，其余转移、队列、重连均不变。</p>
+</section>
+
+<!-- 7 配置 -->
+<section class="section" id="s7">
+  <div class="hd"><span class="num">07</span><h2>配置</h2></div>
+  <p>网关使用 <code>config/config-gate.yml</code> + <code>config/default.yml</code>（可选 <code>config-&lt;env&gt;.yml</code>）。</p>
+
+  <h3>config-gate.yml（仅自身标识）</h3>
+<pre><code>server:
+  id: 10001        <span class="cm"># 网关节点 ID</span></code></pre>
+
+  <p><code>default.yml</code> 的 <code>servers</code> 是节点总表，用 <code>useGateMode</code> 与 <code>type</code> 区分角色：</p>
+<pre><code>servers:
+  - id: 10001         <span class="cm"># 网关自身节点（type:0）</span>
+    type: 0
+    useGateMode: true
+    addr: 0.0.0.0:8010   <span class="cm"># 网关对外 WebSocket（ServerUrl）</span>
+    httpAddr: 0.0.0.0:8090
+  - id: 1001
+    type: 1           <span class="cm"># 逻辑服（logicServerType = 1）</span>
+    useGateMode: true
+    addr: 127.0.0.1:8011   <span class="cm"># 网关后端连接地址</span>
+    httpAddr: 0.0.0.0:8091</code></pre>
+
+  <p><strong>服务发现</strong>（可选 <code>Extra</code>）：</p>
+<pre><code>discovery:
+  onlylocal: false        <span class="cm"># false=HTTP 动态发现；缺省/true=本地配置</span>
+  apiurl: http://admin/discover/server/list   <span class="cm"># 动态发现接口</span></code></pre>
+
+  <p><code>server_discovery.go</code> 用 HTTP GET 拉取服务器列表，过滤 <code>id==0</code>、缺 <code>ip</code>、<code>useGate==0</code> 的行，转成 <code>DynamicServerNode</code> 后经 <code>SyncDynamicServers</code> 全量同步并按 <code>reconcileBackendPools</code> 收敛连接。每 5 分钟刷新一次。</p>
+</section>
+
+<!-- 8 常见配置动作 -->
+<section class="section" id="s8">
+  <div class="hd"><span class="num">08</span><h2>常见配置动作</h2></div>
+  <table>
+    <tbody>
+      <tr><th>场景</th><th>做法</th></tr>
+      <tr><td>新增逻辑服节点</td><td>在 <code>servers</code> 加 <code>type:1</code> 条目，或由动态发现推送；网关下轮收敛自动连上</td></tr>
+      <tr><td>移除后端节点</td><td>从配置或发现列表移除；网关自动断开</td></tr>
+      <tr><td>网关连不上某后端</td><td>自动处理：断开后 1500ms 重连，辅以每 3s 巡检，直至恢复</td></tr>
+      <tr><td>消息发不出去</td><td>检查 <code>isBackendServerConfigured</code> 的服务器类型 / IP 是否有效</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 9 关键代码文件 -->
+<section class="section" id="s9">
+  <div class="hd"><span class="num">09</span><h2>关键代码文件</h2></div>
+  <p>（位于 <code>cmd/gate/</code> 目录内）</p>
+  <table>
+    <tbody>
+      <tr><th>文件</th><th>职责</th></tr>
+      <tr><td><code>main.go</code></td><td>入口、启动 / 关服、服务发现选择</td></tr>
+      <tr><td><code>gate_client_router.go</code></td><td>客户端侧 router / 登录 / 顶号 / 下线 / 上行转发</td></tr>
+      <tr><td><code>gate_logic_router.go</code></td><td>后端侧 router / 下行回发 / 上线上报</td></tr>
+      <tr><td><code>gate_backend_pool.go</code></td><td>后端连接池、收敛、重连、巡检</td></tr>
+      <tr><td><code>gate_outbound_queue.go</code></td><td>出站转发队列（缓冲 + 重发）</td></tr>
+      <tr><td><code>gate_state.go</code></td><td>全局状态、常量、协议对象</td></tr>
+      <tr><td><code>server_discovery.go</code></td><td>HTTP 服务发现（动态节点）</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<hr class="rule">
+<p class="foot">由 <code>docs/gate/gate.md</code> 整理 · 自包含单文件 · 深色表白适应</p>
+
+</main>
+</div>
+</div>
+
+<script>
+// 侧栏当前章节高亮
+(function(){
+  var links=[].slice.call(document.querySelectorAll('.toc a'));
+  if(!links.length||!('IntersectionObserver' in window))return;
+  var map={};links.forEach(function(a){map[a.getAttribute('href').slice(1)]=a});
+  var obs=new IntersectionObserver(function(es){
+    es.forEach(function(e){if(!e.isIntersecting)return;
+      links.forEach(function(a){a.classList.remove('active')});
+      var a=map[e.target.id];if(a)a.classList.add('active');
+    });
+  },{rootMargin:'-45% 0px -55% 0px'});
+  links.forEach(function(a){var t=document.getElementById(a.getAttribute('href').slice(1));if(t)obs.observe(t)});
+})();
+</script>
+</body>
+</html>

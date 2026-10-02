@@ -1,4 +1,4 @@
 server:
   id: 1001
 db:
-  url: root:123456@tcp(127.0.0.1:3306)/gforgame?charset=utf8mb4&parseTime=True&loc=Local
+  url: root:522923080@tcp(192.168.3.7:3306)/gforgame?charset=utf8mb4&parseTime=True&loc=Local

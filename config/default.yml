@@ -7,8 +7,8 @@ servers:
     pprofAddr: :6060
   - id: 1001
     type: 1
-    useGateMode: false
-    # addr: 127.0.0.1:8011
-    addr: 0.0.0.0:8010
+    useGateMode: true
+    addr: 127.0.0.1:8011
+    # addr: 0.0.0.0:8010
     httpAddr: 0.0.0.0:8091
     pprofAddr: :6061

@@ -147,14 +147,16 @@ pre code{background:none;padding:0;font-size:inherit;color:inherit}
 ul,ol{margin:.6rem 0 .6rem 1.2rem;padding:0}
 li{margin:.32rem 0}
 .steps{list-style:none;margin:1rem 0 .2rem;padding:0}
-.steps li{display:grid;grid-template-columns:44px 1fr;gap:14px;padding:12px 0;
-  border-bottom:1px solid var(--hair);align-items:baseline}
-.steps li:last-child{border-bottom:none}
-.steps .n{font-family:var(--mono);font-size:.8rem;font-variant-numeric:tabular-nums;
+.steps>li{display:grid;grid-template-columns:44px minmax(0,1fr);gap:16px;
+  padding:14px 0;border-bottom:1px solid var(--hair);align-items:baseline}
+.steps>li:last-child{border-bottom:none}
+.steps .d{min-width:0}
+.steps>li>.n{font-family:var(--mono);font-size:.8rem;font-variant-numeric:tabular-nums;
   color:var(--amber);padding-top:2px}
-.steps .n:after{content:"\2192";color:var(--muted);margin-left:6px;font-size:.72rem}
-.steps ul{list-style:disc;margin:.35rem 0 .15rem 1.1rem}
-.steps ul li{margin:.15rem 0}
+.steps>li>.n:after{content:"\2192";color:var(--muted);margin-left:6px;font-size:.72rem}
+/* 步骤内嵌的子行：纯文字，完整换行、不缩写宽列 */
+.steps .d ul{list-style:none;margin:.1rem 0 .1rem 1.1rem;padding:0;display:block}
+.steps .d ul li{margin:.12rem 0;display:block;max-width:100%;white-space:normal}
 
 table{width:100%;border-collapse:collapse;margin:1.1rem 0;font-size:.93rem}
 th,td{text-align:left;padding:11px 13px;border-bottom:1px solid var(--hair);vertical-align:top}
@@ -302,10 +304,9 @@ go run ./cmd/game    <span class="cm"># 源码直接跑（需先配好 config-ga
     <li><span class="n">4</span><span class="d"><strong>载入业务配置</strong>：<code>config.InitConfig()</code> 加载 Excel 静态数据（item / hero / mail 等）。</span></li>
     <li><span class="n">5</span><span class="d"><strong>装配服务</strong>：<code>bootstrap.InitServices()</code> 用 <code>dig</code> 装配全部 Service / Repository / 基础服务，并对实现 <code>ServiceModule.Init()</code> 的模块统一初始化。</span></li>
     <li><span class="n">6</span><span class="d"><strong>预热 + 任务恢复</strong>：
-      <ul>
-        <li><code>InitBusiness()</code> → <code>PlayerProfile.LoadPlayerProfiles()</code> 从 DB <code>SELECT id,name,...</code> 重建 <code>id→profile</code> 与 <code>id↔name</code> 内存索引（启动即恢复，不逐账号拉全量），并 <code>ScheduleAllActivity()</code>。</li>
-        <li><code>StartSchedulers()</code> → <code>System.StartSystemTask()</code> 启动每日/每周/每月重置、开服等 cron 任务。</li>
-      </ul></span></li>
+      <code>PlayerProfile.LoadPlayerProfiles()</code> 从 DB 执行 SELECT id,name,... 重建 id→profile 与 id↔name 内存索引（启动即恢复，不逐账号拉全量），并 <code>ScheduleAllActivity()</code>。
+      <code>StartSchedulers()</code> → <code>System.StartSystemTask()</code> 启动每日/每周/每月重置、开服等 cron 任务。
+      </span></li>
     <li><span class="n">7</span><span class="d"><strong>注册路由</strong>：<code>NewMessageRoute()</code> + 各 route 模块 <code>RegisterMessageHandlers</code>。</span></li>
     <li><span class="n">8</span><span class="d"><strong>构建派发链</strong>：<code>NewGameTaskHandler(router, actorSystem)</code> + 共享匿名 Actor；网关模式再插 <code>NewGateTransformHandler()</code>。</span></li>
     <li><span class="n">9</span><span class="d"><strong>启动 WS</strong>：<code>ws.NewServer(...).Start()</code>，随后启后台管理 HTTP 与 pprof。</span></li>
@@ -372,11 +373,10 @@ go run ./cmd/game    <span class="cm"># 源码直接跑（需先配好 config-ga
     <li><span class="n">3</span><span class="d"><strong>参数校验</strong>：带 <code>NeedValidate</code> 则 <code>ValidateStruct</code>，失败回 <code>I18N_COMMON_PROTOCOL_VALIDATION_FAILED</code> 并终止。</span></li>
     <li><span class="n">4</span><span class="d"><strong>打印日志</strong>：<code>logInboundMessage</code>（忽略心跳）。</span></li>
     <li><span class="n">5</span><span class="d"><strong>Actor 串行投递</strong>：
-      <ul>
-        <li>登录消息（<code>CmdReqPlayerLogin</code>）→ 共享 <code>SharedAnonymousActor</code>。</li>
-        <li>其它 → <code>game/player/&lt;playerId&gt;</code> 的玩家 Actor（<code>GetOrCreate</code>，懒创建）。保证同一玩家消息<strong>单协程串行</strong>。</li>
-        <li>邮箱满 / 关闭则丢弃该帧。</li>
-      </ul></span></li>
+      登录消息（<code>CmdReqPlayerLogin</code>）→ 共享 <code>SharedAnonymousActor</code>。
+      其它 → game/player/&lt;playerId&gt; 的玩家 Actor（<code>GetOrCreate</code>，懒创建）。保证同一玩家消息【单协程串行】。
+      邮箱满 / 关闭则丢弃该帧。
+      </span></li>
     <li><span class="n">6</span><span class="d"><strong>dispatchMessage</strong>：<code>callGeneratedRouteHandler</code> 静态派发（<code>route_dispatch_gen.go</code>）首选，缺失则反射兜底；带 panic 回收与错误回包。</span></li>
     <li><span class="n">7</span><span class="d"><strong>回包</strong>：直连 <code>session.Send</code>；网关模式走 <code>io.NotifyByPlayerId</code>。</span></li>
   </ol>

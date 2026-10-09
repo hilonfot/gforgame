@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>gforgame 开发操作手册</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#E9EDF2;
+  --card:#FBFCFE;
+  --ink:#1A2F38;
+  --ink-2:#435962;
+  --muted:#6B7E88;
+  --hair:#D9E2E8;
+  --hair-strong:#C3D0D7;
+  --amber:#b8660b;
+  --amber-in:#8a4c04;
+  --sky:#1f6f93;
+  --sky-in:#17566f;
+  --teal:#0b6e6b;
+  --teal-in:#075a57;
+  --redis:#a8302a;
+  --sans:"IBM Plex Sans",-apple-system,"PingFang SC","Microsoft YaHei",system-ui,Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,"Courier New",monospace;
+  --rail:252px;
+  --measure:720px;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --paper:#10171c;--card:#1a232b;--ink:#e6edf1;--ink-2:#c4d1d8;
+    --muted:#8799a3;--hair:#2b3943;--hair-strong:#3e505c;
+    --amber:#e3a451;--amber-in:#f0c386;--sky:#5bb0d0;--sky-in:#8fd4ec;
+    --teal:#6cc0bd;--teal-in:#8fd4ec;
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{margin:0;color:var(--ink);background:var(--paper);
+  font-family:var(--sans);font-size:16px;line-height:1.72;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+::selection{background:rgba(184,102,17,.18)}
+
+.wrap{max-width:1280px;margin:0 auto;padding:0 26px}
+.grid{display:grid;grid-template-columns:var(--rail) 1fr;column-gap:64px;padding-top:6px}
+main{max-width:var(--measure);min-width:0;padding-bottom:120px}
+
+.topbar{position:sticky;top:0;z-index:20;
+  background:color-mix(in srgb,var(--card) 85%,transparent);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--hair)}
+.topinner{max-width:1280px;margin:0 auto;padding:13px 26px;
+  display:flex;align-items:baseline;justify-content:space-between;gap:16px}
+.brand{font-family:var(--mono);font-size:.78rem;letter-spacing:.08em;color:var(--muted)}
+.brand b{font-weight:600;color:var(--ink)}
+.pagetitle{font-weight:600;font-size:.96rem}
+.pagetitle small{display:block;font-weight:400;color:var(--muted);
+  font-size:.7rem;letter-spacing:.08em;font-family:var(--mono)}
+
+/* 侧栏 */
+aside{position:sticky;top:98px;align-self:start;height:max-content;
+  max-height:calc(100vh - 150px);overflow:auto;padding-right:8px}
+aside .cap{font-family:var(--mono);font-size:.72rem;letter-spacing:.1em;
+  color:var(--muted);margin:0 0 8px 4px}
+.toc{list-style:none;margin:0;padding:0;border-left:1px solid var(--hair)}
+.toc a{display:block;padding:6px 0 6px 16px;margin-left:-1px;
+  border-left:2px solid transparent;color:var(--muted);text-decoration:none;
+  font-size:.89rem;line-height:1.35}
+.toc a:hover{color:var(--ink)}
+.toc a.active{border-left-color:var(--amber);color:var(--ink)}
+.toc .sub a{padding-left:32px;font-size:.83rem}
+@media (max-width:1020px){ .grid{grid-template-columns:1fr} aside{display:none} }
+@media (max-width:520px){ .pagetitle small{display:none} }
+
+/* Hero */
+.hero{padding-top:58px}
+.hero h1{font-size:clamp(2.1rem,5.2vw,3.1rem);font-weight:300;
+  letter-spacing:-.02em;line-height:1.1;margin:0 0 18px}
+.hero h1 b{font-weight:500}
+.lede{font-size:1.06rem;color:var(--ink-2);max-width:60ch;margin:0 0 30px}
+.chips{display:flex;flex-wrap:wrap;gap:9px;margin:0 0 8px}
+.chip{font-family:var(--mono);font-size:.72rem;letter-spacing:.04em;
+  color:var(--sky-in);border:1px solid var(--hair-strong);border-radius:999px;padding:4px 11px;
+  background:color-mix(in srgb,var(--card) 70%,transparent)}
+
+/* 正文 */
+.section{margin-top:92px;scroll-margin-top:118px}
+.section:first-of-type{margin-top:0}
+.hd{display:flex;align-items:center;gap:15px;margin-bottom:10px}
+.hd .num{font-family:var(--mono);font-weight:500;font-size:.78rem;line-height:1.5;white-space:nowrap;
+  color:var(--amber);border:1px solid currentColor;border-radius:999px;padding:1px 10px 0}
+.section h2{margin:0;font-size:1.5rem;font-weight:600;letter-spacing:-.01em}
+.section h3{margin:2.3rem 0 .7rem;font-size:1.1rem;font-weight:600;letter-spacing:-.005em}
+.section h3 .kicker{font-family:var(--mono);color:var(--muted);font-size:.76rem;font-weight:400}
+p{margin:.85rem 0}
+a{color:var(--sky-in);text-decoration:none}
+a:hover{text-decoration:underline}
+strong{font-weight:600}
+em{color:var(--teal-in)}
+
+code,kbd{font-family:var(--mono)}
+:not(pre)>code{font-size:.85em;
+  background:color-mix(in srgb,var(--hair-strong) 24%,transparent);
+  border-radius:5px;padding:.12em .42em}
+pre{background:#18262e;color:#d9e6ec;border:1px solid var(--hair);
+  border-radius:12px;padding:18px 20px;overflow-x:auto;
+  font-family:var(--mono);font-size:.78rem;line-height:1.66;
+  box-shadow:inset 0 -36px 60px -54px rgba(0,0,0,.6)}
+pre .cm{opacity:.52}
+pre code{background:none;padding:0;font-size:inherit;color:inherit}
+
+ul,ol{margin:.6rem 0 .6rem 1.2rem;padding:0}
+li{margin:.32rem 0}
+.steps{list-style:none;margin:1rem 0 .2rem;padding:0}
+.steps li{display:grid;grid-template-columns:44px 1fr;gap:14px;padding:12px 0;
+  border-bottom:1px solid var(--hair);align-items:baseline}
+.steps li:last-child{border-bottom:none}
+.steps .n{font-family:var(--mono);font-size:.8rem;font-variant-numeric:tabular-nums;
+  color:var(--amber);padding-top:2px}
+.steps .n:after{content:"\2192";color:var(--muted);margin-left:6px;font-size:.72rem}
+.steps ul{list-style:disc;margin:.35rem 0 .15rem 1.1rem}
+.steps ul li{margin:.15rem 0}
+
+table{width:100%;border-collapse:collapse;margin:1.1rem 0;font-size:.93rem}
+th,td{text-align:left;padding:11px 13px;border-bottom:1px solid var(--hair);vertical-align:top}
+th{font-weight:600;color:var(--ink-2);font-family:var(--mono);font-size:.78rem;letter-spacing:.02em}
+td code{white-space:nowrap}
+tr:last-child td{border-bottom:none}
+
+blockquote{margin:1.2rem 0;padding:3px 0 3px 20px;border-left:3px solid var(--amber);
+  color:var(--ink-2);font-size:.95rem}
+blockquote p{margin:.4rem 0}
+
+.rule{height:1px;border:none;background:linear-gradient(90deg,var(--hair) 0%,transparent 100%);margin:100px 0 30px}
+.foot{color:var(--muted);font-size:.85rem}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topinner">
+    <div class="brand">gforgame<b>/</b>guide</div>
+    <div class="pagetitle">开发操作手册<small>MESSAGES · ROUTES · ACTOR · CACHE · CONFIG</small></div>
+  </div>
+</div>
+
+<div class="wrap">
+<div class="grid">
+
+<aside>
+  <p class="cap">目录</p>
+  <nav class="toc" aria-label="章节">
+    <a href="#s0">启  · 常用命令</a>
+    <a href="#s1">1 · 新增消息与处理方法</a>
+    <a href="#s11" class="sub">1.1 · 三步走</a>
+    <a href="#s12" class="sub">1.2 · 重新生成</a>
+    <a href="#s2">2 · 业务配置读取</a>
+    <a href="#s3">3 · 事件总线</a>
+    <a href="#s4">4 · Actor 并发模型</a>
+    <a href="#s41" class="sub">4.1 · 三种通道</a>
+    <a href="#s42" class="sub">4.2 · 落地示例</a>
+    <a href="#s5">5 · Cache 模块</a>
+    <a href="#s6">6 · Service 注入</a>
+    <a href="#s7">7 · 端到端演练</a>
+    <a href="#s8">8 · 常见坑位</a>
+    <a href="#s9">9 · 关键代码文件</a>
+  </nav>
+</aside>
+
+<main>
+
+<header class="hero">
+  <h1>在这套<b>约定大于配置</b>的架上，<br>把一条消息通下来</h1>
+  <p class="lede"><code>gforgame</code> 是一个轻量级手游服务端框架：消息处理不写显式函数表，靠扫描方法签名；配置是 Excel；并发是「每实体一协程」的 Actor。这份手册告诉你每一步在哪个文件写什么。</p>
+  <div class="chips"><span class="chip">Go 1.26</span><span class="chip">json / protobuf / struct</span><span class="chip">webclient</span><span class="chip">cocos 3.8 / go</span></div>
+</header>
+
+<!-- 0 常用命令 -->
+<section class="section" id="s0">
+  <div class="hd"><span class="num">启</span><h2>常用命令</h2></div>
+<pre><code>make                 <span class="cm"># 编译本机 game + gate 到 bin/</span>
+go run ./cmd/game    <span class="cm"># 启动游戏服（先配好 config/config-game.yml 的 db）</span>
+go run ./cmd/gate    <span class="cm"># 启动网关（需先起 game）</span>
+go test ./...        <span class="cm"># 全部单测</span>
+go generate ./cmd/game   <span class="cm"># 改了协议 / 路由后必跑</span></code></pre>
+  <p>启动顺序见 <code>cmd/game/main.go</code>：<code>InitMysql → InitDdl → config.InitConfig() → InitServices() → InitBusiness → 起网络</code>。新增模块记得接入 <code>main.go</code> 的 <code>modules</code> 列表。</p>
+</section>
+
+<!-- 1 消息与路由 -->
+<section class="section" id="s1">
+  <div class="hd"><span class="num">01</span><h2>新增消息与处理方法</h2></div>
+  <p>核心原则：<strong>约定大于配置</strong>。路由扫描方法签名自动注册（<code>network/handler.go</code> 的 <code>parseHandlerSignature</code>），不写显式 handler 表。对应三类文件：</p>
+  <table>
+    <tbody>
+      <tr><th>职责</th><th>文件</th><th>动作</th></tr>
+      <tr><td>消息定义</td><td><code>internal/protos/&lt;mod&gt;.go</code></td><td>加 <code>Req/Res</code> 结构体 + <code>cmd_ref</code>；<code>message.go</code> 加 Cmd 常量</td></tr>
+      <tr><td>业务逻辑</td><td><code>internal/service/&lt;mod&gt;/…</code></td><td>纯逻辑，不碰协议</td></tr>
+      <tr><td>路由薄层</td><td><code>internal/route/&lt;mod&gt;.go</code></td><td>处理方法组装请求 → service → 响应</td></tr>
+    </tbody>
+  </table>
+
+  <h3>1.1 · 三步走 <span class="kicker">step by step</span></h3>
+  <ol class="steps">
+    <li><span class="n">1</span><span class="d">在 <code>protos</code> 里定义消息。每个结构体必带 <code>_ struct{} cmd_ref:"CmdXxx"</code>，把消息关联到 <code>message.go</code> 的常量；字段用 <code>json</code> tag 对齐客户端。</span></li>
+    <li><span class="n">2</span><span class="d">在 <code>route</code> 加处理方法，签名：首参 <code>session</code> 或 <code>playerId</code>（可跟 <code>index</code>），末参 <code>*ReqXxx</code>，返回 <code>*ResXxx</code>，方法名 <code>ReqXxx</code>。<code>Req→Res</code>、结构体→Cmd 由生成器推导。</span></li>
+    <li><span class="n">3</span><span class="d">在 <code>cmd/game/main.go</code> 的 <code>modules</code> 列表加 <code>route.NewXxxRoute(...)</code>。最后 <code>go generate</code> 重新生成路由。</span></li>
+  </ol>
+  <p>消息结构体示例（参照 <code>protos/friend.go</code>）：</p>
+<pre><code>type ReqFriendSearchPlayers struct {
+  _   struct{} `cmd_ref:"CmdFriendReqSearchPlayers"`  <span class="cm">// 必须有</span>
+  Key string                                    `json:"key"`
+}</code></pre>
+  <p>处理方法示例（参照 <code>route/friend.go</code>）：</p>
+<pre><code>func (r *FriendRoute) ReqSearchPlayers(
+    playerId string, index int32, msg *protos.ReqFriendSearchPlayers,
+) *protos.ResFriendSearchPlayers {
+  p := r.playerrepo.GetPlayer(playerId)
+  items := r.service.SearchByKey(msg.Key)
+  return &amp;protos.ResFriendSearchPlayers{Code: 0, Items: items}
+}</code></pre>
+
+  <h3>1.2 · 重新生成 <span class="kicker">go generate</span></h3>
+<pre><code>go generate ./cmd/game      <span class="cm"># 等价 go run ./internal/tools/gen all</span>
+  <span class="cm"># protocolgen → 导出 TS 客户端协议 + 生成 register_gen.go</span>
+  <span class="cm"># routedispatch → 读 register 生成 route_dispatch_gen.go</span>
+make game</code></pre>
+  <blockquote><p>不跑这步，运行期找不到 handler、或构建报错。<code>register_gen.go</code> / <code>route_dispatch_gen.go</code> 是自动生成，别手改。</p></blockquote>
+</section>
+
+<!-- 2 业务配置 -->
+<section class="section" id="s2">
+  <div class="hd"><span class="num">02</span><h2>业务配置读取（Excel）</h2></div>
+  <p>配置不是 yml，而是 <code>config/excel/*.xlsx</code>，由 <code>config.InitConfig()</code> 一次性全量加载进内存。（系统/服务器级配置是 <code>default.yml</code> + <code>config-{env}.yml</code>，走 viper，见另文。）</p>
+  <h3>新增配置表 <span class="kicker">excel → struct → loader</span></h3>
+  <ol class="steps">
+    <li><span class="n">1</span><span class="d">新建 <code>config/excel/xxx.xlsx</code>：第 3 行为列头，前面两行留作说明；第 1 列写 <code>end</code> 结束。</span></li>
+    <li><span class="n">2</span><span class="d">在 <code>internal/domain/config/</code> 加结构体，字段用 <code>excel</code> tag 映射列名（忽略大小写，支持匿名嵌入）。</span></li>
+    <li><span class="n">3</span><span class="d">在 <code>internal/config/data_manager.go</code> 的 <code>tableConfigs</code> 登记。</span></li>
+  </ol>
+<pre><code>type PlayerLevelData struct {
+  Id    int32 `json:"id"    excel:"id"`
+  Level int32 `json:"level" excel:"level"`
+  Cost  int32 `json:"cost"  excel:"cost"`
+}</code></pre>
+<pre><code><span class="cm">// 普通表（主键取 Id，表名=去掉 Data 后缀小写，文件=表名.xlsx）</span>
+newDefaultTableLoader[domain.PlayerLevelData](nil, nil),
+<span class="cm">// 需要索引：{"索引名":"字段名"}，逗号分隔多字段即联合索引</span>
+newDefaultTableLoader[domain.GachaData](nil, map[string]string{"pool":"Pool"}),</code></pre>
+  <p>业务查询：</p>
+<pre><code>config.QueryById[domain.PlayerLevelData](id)   <span class="cm">// 单条（按 Id）</span>
+config.QueryAll[domain.PlayerLevelData]()       <span class="cm">// 全量</span>
+c := config.GetContainer("quest").(*container.QuestContainer)  <span class="cm">// 容器</span></code></pre>
+  <p>需要「配置后处理」（excel 表达不了的结构，如成就链表）时，写一个自定义 container 重写 <code>AfterLoad()</code>，改用 <code>newContainerTableLoader[T, C]</code>。</p>
+</section>
+
+<!-- 3 事件总线 -->
+<section class="section" id="s3">
+  <div class="hd"><span class="num">03</span><h2>事件总线（模块解耦）</h2></div>
+  <p><code>common/eventbus</code> 提供全局发布 / 订阅，适合模块间解耦（玩家加载、背包变化等）。</p>
+<pre><code>import "github.com/forfun/gforgame/common/eventbus"
+
+<span class="cm">// 发布</span>
+eventbus.Default().Publish(events.PlayerAfterLoad, player)
+
+<span class="cm">// 订阅（一般放模块 Init）</span>
+eventbus.Default().Subscribe(events.PlayerAfterLoad, func(data any) {
+  p := data.(*playerdomain.Player)
+  // …
+})</code></pre>
+</section>
+
+<!-- 4 Actor -->
+<section class="section" id="s4">
+  <div class="hd"><span class="num">04</span><h2>Actor 并发模型</h2></div>
+  <p>适用「一个实体要被多协程并发访问、又要串行处理」的状态机——排行榜、公会、玩家异步任务。核心思想：<strong>每实体一协程 + 邮箱串行，改动状态只能发消息，故无需锁</strong>。</p>
+  <table>
+    <tbody>
+      <tr><th>类型</th><th>作用</th></tr>
+      <tr><td><code>ActorSystem</code></td><td>actor 注册表 + 生命周期（路径为键）</td></tr>
+      <tr><td><code>ActorRef</code></td><td>对外句柄：<code>Tell</code> / <code>Ask</code> / <code>Task</code> / <code>Stop</code></td></tr>
+      <tr><td><code>BaseActor</code></td><td>内嵌后获得按消息类型分发</td></tr>
+      <tr><td><code>RegisterCmd[T]</code></td><td>强类型注册处理函数</td></tr>
+    </tbody>
+  </table>
+
+  <h3>4.1 · 三种通道 <span class="kicker">mailbox</span></h3>
+  <ul>
+    <li><strong>Tell</strong>：异步 fire-and-forget，写消息。邮箱满返回 error，不阻塞。</li>
+    <li><strong>Ask</strong>：同步等回复，适合读。以 <code>askWrap{payload, resp}</code> 包进邮箱，两个 select 阶段共享同一个 timer，<code>maxAskTimeout=3s</code> 兜底。</li>
+    <li><strong>Task</strong>：把 <code>fn</code> 包成任务投进去，在目标协程里执行。</li>
+  </ul>
+  <p>三者在<strong>同一 channel</strong> 排队，FIFO 天然保证串行——所以你可用「栅栏」同步：<code>ref.Ask(syncBarrier{})</code> 等队列清空。</p>
+
+  <h3>4.2 · 落地示例 <span class="kicker">rank</span></h3>
+<pre><code><span class="cm">// 容器定义 &lt;--&gt; 消息（ConcurrentRankContainer 门面）</span>
+type ConcurrentRankContainer struct{ ref *actor.ActorRef }
+func (c *ConcurrentRankContainer) Add(key, value any) {
+  _, _ = c.ref.Ask(&amp;AddCmd{Key: key, Value: value})
+}
+
+<span class="cm">// actor 定义 + 注册（参照 rank_actor.go）</span>
+type RankActor struct { *actor.BaseActor; ranks *treemap.Map }
+func NewRankActor(...) *RankActor {
+  a := &amp;RankActor{BaseActor: actor.NewBaseActor()}
+  actor.RegisterCmd(a.BaseActor, a.handleAdd)
+  return a
+}
+func (a *RankActor) handleAdd(cmd *container.AddCmd) actor.Message { … }
+
+<span class="cm">// 惰性创建 + 幂等复用</span>
+ref := sys.GetOrCreate(actor.NewActorPath("game","rank",rankType),
+  func() actor.Actor { return NewRankActor(rankType, cap) })</code></pre>
+  <p>要求业务侧无感知 actor：外面只拿到 <code>ActorRef</code>，方法内部都 <code>Ask</code>。</p>
+  <blockquote><p><strong>铁律：Ask 不得嵌套</strong>——在某个 actor 的 OnMessage 里再 Ask 同一个或互相 ask 会自阻塞。跨 actor 协作用 Tell。</p></blockquote>
+  <p>若只是想在某玩家维度串行执行一段逻辑，不必 spawn 整个 actor：</p>
+<pre><code><span class="cm">// dispatch/player_task_dispatcher.go</span>
+s.playerTaskDispatcher.DispatchPlayerTask(friendId, func() {
+  list := s.service.QueryMyFriendVos(p.Id)  <span class="cm">// 在这玩家队列串行执行</span>
+})</code></pre>
+</section>
+
+<!-- 5 Cache -->
+<section class="section" id="s5">
+  <div class="hd"><span class="num">05</span><h2>Cache 模块</h2></div>
+  <p>两层：内存缓存（读多写少、自动回源）+ 持久层（GORM 落库）。用法一在 <code>cache/</code>（<code>CacheManager</code> + <code>Cache</code>）：</p>
+<pre><code><span class="cm">// Init / 构造 里注册回源（miss 时从 db 加载）</span>
+r.cacheManager.Register("player", func(key string) (any, error) {
+  player := r.inner.GetPlayerByID(key)
+  eventbus.Default().Publish(events.PlayerAfterLoad, player)
+  return player, nil
+})
+
+<span class="cm">// 业务读写</span>
+cache, _ := r.cacheManager.GetCache("player")
+p := cache.Get(playerId)      <span class="cm">// miss 自动回源</span>
+cache.Set(playerId, player)   <span class="cm">// 更新缓存</span></code></pre>
+  <p>持久化用例 —「先更内存，再落库」：</p>
+<pre><code>func (r *PlayerRepository) SavePlayer(p *playerdomain.Player) {
+  cache, _ := r.cacheManager.GetCache("player")
+  cache.Set(p.GetId(), p)
+  r.inner.SavePlayerToDb(p)   <span class="cm">// 异步落库（AsyncDBService）</span>
+}</code></pre>
+  <p>每个表一个独立 <code>Cache</code>（默认 30min 过期 / 10s 清理）。定时脏数据落盘走 <code>schedule</code>（例：<code>NewDefaultTaskScheduler</code>）。</p>
+</section>
+
+<!-- 6 Service -->
+<section class="section" id="s6">
+  <div class="hd"><span class="num">06</span><h2>Service 注入（dig）</h2></div>
+  <p><code>internal/bootstrap/services.go</code> 用 <code>go.uber.org/dig</code> 做依赖注入。加一个 service：</p>
+  <ol class="steps">
+    <li><span class="n">1</span><span class="d">构造函数入参用 <code>dig.In</code>，返回值普通指针。</span></li>
+    <li><span class="n">2</span><span class="d"><code>registerServices</code> 里 <code>c.Provide(NewXxxService)</code>；接口就用转函数 <code>c.Provide(func(...) XxxInterface {...})</code>。</span></li>
+    <li><span class="n">3</span><span class="d"><code>Services</code> struct 加字段供 route 注入；实现了 <code>ServiceModule.Init()</code> 的会被自动调 init（用于订阅、缓存回源）。</span></li>
+  </ol>
+<pre><code>type FriendServiceParams struct {
+  dig.In
+  PlayerRepo *playerrepo.PlayerRepository
+  Cache      *cache.Manager
+}
+func NewFriendService(p FriendServiceParams) *FriendService { … }
+<span class="cm">// registerServices:
+_ = c.Provide(friend.NewFriendService)</span></code></pre>
+</section>
+
+<!-- 7 演练 -->
+<section class="section" id="s7">
+  <div class="hd"><span class="num">07</span><h2>端到端演练：新增「抽卡」模块</h2></div>
+  <p>把上面的串起来，从零加一个 <code>gacha</code> 模块，6 个文件 + 3 处改动。参照 <code>friend</code> 模块既有结构。</p>
+  <h3>文件清单</h3>
+<pre><code>internal/protos/gacha.go                 <span class="cm"># 消息</span>
+internal/service/gacha/gacha.go          <span class="cm"># 业务</span>
+internal/route/gacha.go                  <span class="cm"># 路由</span>
+internal/domain/config/gacha.go          <span class="cm"># 配置 PO</span>
+internal/config/container/gacha_container.go  <span class="cm"># 容器（可选）</span>
+internal/bootstrap/services.go           <span class="cm"># 改：注册 service</span>
+cmd/game/main.go                         <span class="cm"># 改：加 route</span>
+config/excel/gacha.xlsx                  <span class="cm"># 配置表</span></code></pre>
+
+  <h3>1 · 消息 <span class="kicker">protos/gacha.go</span></h3>
+<pre><code>type ReqGachaDraw struct {
+  _      struct{} `cmd_ref:"CmdGachaDrawReq"`
+  Pool   int32 `json:"pool"`
+  Times  int32 `json:"times"`
+}
+type ResGachaDraw struct {
+  _       struct{} `cmd_ref:"CmdGachaDrawRes"`
+  Code    int32  `json:"code"`
+  ItemIds []int32 `json:"itemIds"`
+}
+<span class="cm">// message.go:
+CmdGachaDrawReq int32 = 4201
+CmdGachaDrawRes int32 = 4251</span></code></pre>
+
+  <h3>2 · service <span class="kicker">gacha.go</span></h3>
+<pre><code>type GachaService struct{ conf *container.GachaContainer }
+type GachaServiceParams struct{ dig.In; Conf *container.GachaContainer }
+func NewGachaService(p GachaServiceParams) *GachaService {
+  return &amp;GachaService{conf: p.Conf}
+}
+func (s *GachaService) Draw(pool, times int32) []int32 {
+  ids := make([]int32, 0, times)
+  for i := int32(0); i &lt; times; i++ {
+    ids = append(ids, s.conf.NextDrop(pool))
+  }
+  return ids
+}</code></pre>
+
+  <h3>3 · route <span class="k">route/gacha.go</span></h3>
+<pre><code>type GachaRoute struct{ service *gacha.GachaService }
+func NewGachaRoute(service *gacha.GachaService) *GachaRoute { … }
+func (r *GachaRoute) ReqGachaDraw(
+  playerId string, index int32, msg *protos.ReqGachaDraw,
+) *protos.ResGachaDraw {
+  ids := r.service.Draw(msg.Pool, msg.Times)
+  return &amp;protos.ResGachaDraw{Code: 0, ItemIds: ids}
+}</code></pre>
+
+  <h3>4 · 配置 <span class="k">Excel + loader</span></h3>
+<pre><code><span class="cm">// domain/config/gacha.go</span>
+type GachaData struct {
+  Id int32 `json:"id" excel:"id"`      Pool  int32 `excel:"pool"`
+  Item int32 `excel:"item"`   Weight int32 `excel:"weight"`
+}
+<span class="cm">// domain/config/gacha.go: 按 pool 建索引</span>
+newDefaultTableLoader[domain.GachaData](nil, map[string]string{"pool":"Pool"})</code></pre>
+  <blockquote><p>简化可选：不想要容器就直接 <code>config.QueryById[domain.GachaData]</code>。</p></blockquote>
+
+  <h3>5 · 装配 + 生成</h3>
+<pre><code><span class="cm">// services.go:</span>
+_ = c.Provide(gacha.NewGachaService)         Gacha 加入 Services
+<span class="cm">// main.go modules:</span>
+route.NewGachaRoute(s.Gacha),
+
+go generate ./cmd/game   <span class="cm"># 生成 register_gen / route_dispatch / TS</span>
+make game
+go run ./cmd/game         <span class="cm"># 看日志 "Loaded table [gacha] with N records"</span></code></pre>
+
+  <h3>验证清单</h3>
+  <table>
+    <tbody>
+      <tr><th>检查点</th><th>现象</th></tr>
+      <tr><td>协议注册</td><td><code>register_gen.go</code> 出现 <code>RegisterMessage(4201, &amp;ReqGachaDraw{})</code></td></tr>
+      <tr><td>转发器</td><td><code>route_dispatch_gen.go</code> 有 <code>ReqGachaDraw→ResGachaDraw</code></td></tr>
+      <tr><td>配置加载</td><td>启动日志列 <code>gacha</code> 表条数</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 8 坑位 -->
+<section class="section" id="s8">
+  <div class="hd"><span class="num">08</span><h2>常见坑位</h2></div>
+  <table>
+    <tbody>
+      <tr><th>坑</th><th>说明</th></tr>
+      <tr><td>改了协议没 <code>go generate</code></td><td>handler 找不到 / 构建报错。协议、路由文件手工改；自动生成别动</td></tr>
+      <tr><td><code>message.go</code> 里加注释</td><td>解析会出错</td></tr>
+      <tr><td>消息没带 <code>cmd_ref</code></td><td>protocolgen 认不出来，register 里没有，路由注册不进去</td></tr>
+      <tr><td>Ask 嵌套</td><td>同 actor / 互 Ask 死锁，用 Tell</td></tr>
+      <tr><td>并发改同一 entity</td><td>没走 Actor / Dispatcher，靠你自己加锁</td></tr>
+      <tr><td>配置字段没 <code>excel</code> tag</td><td>加载 <code>ignoreUnknownFields=true</code> 会静默读不到</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 9 关键文件 -->
+<section class="section" id="s9">
+  <div class="hd"><span class="num">09</span><h2>关键代码文件</h2></div>
+  <table>
+    <tbody>
+      <tr><th>目录 / 文件</th><th>职责</th></tr>
+      <tr><td><code>actor/</code></td><td><code>ActorSystem / ActorRef / Mailbox / BaseActor</code>：消息传递 + 串行模型</td></tr>
+      <tr><td><code>cache/</code></td><td><code>CacheManager / Cache</code>：内存缓存 + 回源 + 定期清理</td></tr>
+      <tr><td><code>network/</code></td><td>ws/socket 共用的网络层 + <code>route.Dispatch</code> + <code>parseHandlerSignature</code></td></tr>
+      <tr><td><code>internal/protos/</code></td><td>消息定义 + <code>Cmd</code> 常量 + <code>register_gen.go</code>（自动生成）</td></tr>
+      <tr><td><code>internal/route/</code></td><td>路由薄层，方法名 = 处理器</td></tr>
+      <tr><td><code>internal/service/</code></td><td>各模块业务 + <code>dispatch/PlayerTaskDispatcher</code></td></tr>
+      <tr><td><code>internal/config/</code></td><td>Excel 配置加载（<code>DataManager</code> + 容器）</td></tr>
+      <tr><td><code>internal/bootstrap/</code></td><td><code>services.go</code> dig 装配 / 起步注册</td></tr>
+      <tr><td><code>config/excel/ *.xlsx</code></td><td>业务配置源数据</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<hr class="rule">
+<p class="foot">由 <code>docs/guide.md</code> 整理 · 自包含单文件 · 深色表白适应</p>
+
+</main>
+</div>
+</div>
+
+<script>
+// 侧栏当前章节高亮
+(function(){
+  var links=[].slice.call(document.querySelectorAll('.toc a'));
+  if(!links.length||!('IntersectionObserver' in window))return;
+  var map={};links.forEach(function(a){map[a.getAttribute('href').slice(1)]=a});
+  var obs=new IntersectionObserver(function(es){
+    es.forEach(function(e){if(!e.isIntersecting)return;
+      links.forEach(function(a){a.classList.remove('active')});
+      var a=map[e.target.id];if(a)a.classList.add('active');
+    });
+  },{rootMargin:'-45% 0px -55% 0px'});
+  links.forEach(function(a){var t=document.getElementById(a.getAttribute('href').slice(1));if(t)obs.observe(t)});
+})();
+</script>
+</body>
+</html>

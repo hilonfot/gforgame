@@ -78,7 +78,7 @@ func (b *BaseGenerator) Generate(g ProtocolGenerator, msgIds map[string]int32) e
 		}
 
 		// 通用AST解析
-		filePath := b.GoDir + "\\" + file.Name()
+		filePath := filepath.Join(b.GoDir, file.Name())
 		structInfos, err := b.parseGoFile(filePath)
 		if err != nil {
 			fmt.Printf("解析文件 %s 失败：%v\n", filePath, err)
@@ -86,9 +86,12 @@ func (b *BaseGenerator) Generate(g ProtocolGenerator, msgIds map[string]int32) e
 		}
 		// 为每个结构体生成文件
 		for _, si := range structInfos {
-			sourceFile := strings.TrimSuffix(filePath, ".go")
-			// 去掉 internal/protos 前缀
-			sourceFile = strings.TrimPrefix(sourceFile, filepath.Join("internal", "protos"))
+			// 相对于 GoDir 的源文件路径（去掉 .go 后缀），跨平台由 filepath 处理
+			relPath, err := filepath.Rel(b.GoDir, filePath)
+			if err != nil {
+				relPath = file.Name()
+			}
+			sourceFile := strings.TrimSuffix(relPath, ".go")
 
 			si.SourceFile = sourceFile
 			if err := b.generateStructFile(g, si, msgIds); err != nil {
@@ -112,11 +115,11 @@ func (b *BaseGenerator) generateStructFile(g ProtocolGenerator, si structInfo, m
 	if err := b.template.Execute(&buf, data); err != nil {
 		panic(fmt.Sprintf("渲染模板失败：%v", err))
 	}
-	if err := os.MkdirAll(b.OutputDir+"\\"+si.SourceFile, 0755); err != nil {
+	if err := os.MkdirAll(filepath.Join(b.OutputDir, si.SourceFile), 0755); err != nil {
 		return fmt.Errorf("创建输出目录失败：%w", err)
 	}
 	// 写入文件
-	outputPath := b.OutputDir + "\\" + si.SourceFile + "\\" + si.Name + g.GetFileSuffix()
+	outputPath := filepath.Join(b.OutputDir, si.SourceFile, si.Name+g.GetFileSuffix())
 	if err := os.WriteFile(outputPath, buf.Bytes(), 0644); err != nil {
 		return fmt.Errorf("写入文件失败：%w", err)
 	}
@@ -326,7 +329,7 @@ func (b *BaseGenerator) parseAllTags(tagStr string) map[string]string {
 
 func (b *BaseGenerator) GenerateRegisterFromTags(goDir string, outputFile string, msgConsts map[string]int) error {
 	if msgConsts == nil || len(msgConsts) == 0 {
-		msgConsts = b.buildMsgConstMap(goDir + "\\" + "message.go")
+		msgConsts = b.buildMsgConstMap(filepath.Join(goDir, "message.go"))
 	}
 	files, err := os.ReadDir(goDir)
 	if err != nil {
@@ -350,7 +353,7 @@ func (b *BaseGenerator) GenerateRegisterFromTags(goDir string, outputFile string
 		if file.IsDir() || !strings.HasSuffix(file.Name(), ".go") {
 			continue
 		}
-		filePath := goDir + "\\" + file.Name()
+		filePath := filepath.Join(goDir, file.Name())
 		node, err := parser.ParseFile(fset, filePath, nil, 0)
 		if err != nil {
 			continue
